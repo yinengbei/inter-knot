@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:inter_knot/components/discussions_grid.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/throttle.dart';
+import 'package:inter_knot/pages/create_discussion_page.dart';
+import 'package:inter_knot/pages/login_page.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -71,9 +73,13 @@ class _SearchPageState extends State<SearchPage>
           child: IconButton.filledTonal(
             iconSize: 32,
             padding: const EdgeInsets.all(12),
-            onPressed: () => launchUrlString(
-              'https://github.com/share121/inter-knot/discussions/new/choose',
-            ),
+            onPressed: () {
+              if (c.isLogin.value) {
+                Get.to(() => const CreateDiscussionPage());
+              } else {
+                Get.to(() => const LoginPage());
+              }
+            },
             icon: Icon(MdiIcons.pen),
           ),
         ),

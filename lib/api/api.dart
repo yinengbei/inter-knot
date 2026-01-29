@@ -60,7 +60,7 @@ class BaseConnect extends GetConnect {
   @override
   void onInit() {
     httpClient.baseUrl = 'http://localhost:4000';
-    httpClient.addAuthenticator<dynamic>((request) async {
+    httpClient.addRequestModifier<dynamic>((request) async {
       var token = box.read<String>('access_token') ?? '';
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
@@ -72,11 +72,13 @@ class BaseConnect extends GetConnect {
         box.remove('access_token');
         Get.offAll(() => const LoginPage());
       }
+      return rep;
     });
   }
 
-  Future<Response<Map<String, dynamic>>> graphql(String data) =>
-      post('/graphql', jsonEncode({'query': data}));
+  Future<Response<Map<String, dynamic>>> graphql(String query,
+          {Map<String, dynamic>? variables}) =>
+      post('/graphql', jsonEncode({'query': query, 'variables': variables}));
 }
 
 class Api extends BaseConnect {
@@ -112,6 +114,22 @@ class Api extends BaseConnect {
   ) =>
       graphql(graphql_query.addDiscussionComment(discussionId, body));
 
+  Future<Response<Map<String, dynamic>>> createDiscussion(
+    String title,
+    String bodyHTML,
+    String bodyText,
+    String? cover,
+  ) =>
+      graphql(
+        graphql_query.createDiscussionMutation,
+        variables: {
+          'title': title,
+          'bodyHTML': bodyHTML,
+          'bodyText': bodyText,
+          'cover': cover,
+        },
+      );
+
   Future<Response<Map<String, dynamic>>> deleteDiscussion(String id) =>
       graphql(graphql_query.deleteDiscussion(id));
 
@@ -127,8 +145,9 @@ class Api extends BaseConnect {
 
   Future<AuthorModel> getSelfUserInfo(String login) async {
     final res = await graphql(graphql_query.getSelfUserInfo());
-    return AuthorModel.fromJson(
-        res.body!['data']['me'] as Map<String, dynamic>);
+    final data = res.body?['data']?['me'];
+    if (data == null) throw Exception('User not found');
+    return AuthorModel.fromJson(data as Map<String, dynamic>);
   }
 
   Future<AuthorModel> getUserInfo(String username) async {

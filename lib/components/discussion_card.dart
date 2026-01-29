@@ -130,16 +130,14 @@ class _DiscussionCardState extends State<DiscussionCard>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Obx(
-                                  () => Text(
-                                    widget.discussion.author.name,
-                                    style: const TextStyle(
-                                      color: Color(0xff626262),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                Text(
+                                  widget.discussion.author.name,
+                                  style: const TextStyle(
+                                    color: Color(0xff626262),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 const Divider(height: 1),

@@ -32,3 +32,11 @@ String login(String email, String password) =>
 
 String register(String username, String email, String password) =>
     'mutation { register(username: "$username", email: "$email", password: "$password") { token user { username avatarUrl } } }';
+
+const String createDiscussionMutation = r'''
+  mutation CreateDiscussion($title: String!, $bodyHTML: String!, $bodyText: String!, $cover: String) {
+    createDiscussion(title: $title, bodyHTML: $bodyHTML, bodyText: $bodyText, cover: $cover) {
+      id
+    }
+  }
+''';

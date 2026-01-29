@@ -149,17 +149,15 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Obx(
-                                      () => Text(
-                                        widget.discussion.author.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          color: Color(0xff808080),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                    Text(
+                                      widget.discussion.author.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        color: Color(0xff808080),
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                     SingleChildScrollView(
                                       scrollDirection: Axis.horizontal,

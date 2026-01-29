@@ -16,14 +16,13 @@ class Comment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      return SizedBox(
-        width: double.infinity,
-        child: Column(
-          children: [
-            for (final (index, comment)
-                in discussion.comments.map((e) => e.nodes).flat.indexed)
-              ListTile(
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          for (final (index, comment)
+              in discussion.comments.map((e) => e.nodes).flat.indexed)
+            ListTile(
                 titleAlignment: ListTileTitleAlignment.top,
                 contentPadding: EdgeInsets.zero,
                 horizontalTitleGap: 8,
@@ -40,12 +39,10 @@ class Comment extends StatelessWidget {
                     Flexible(
                       child: InkWell(
                         onTap: () => launchUrlString(comment.url),
-                        child: Obx(
-                          () => Text(
-                            comment.author.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        child: Text(
+                          comment.author.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -87,22 +84,19 @@ class Comment extends StatelessWidget {
                     ),
                     const Divider(),
                     Replies(comment: comment, discussion: discussion),
-                  ],
-                ),
+                ],
               ),
-            Obx(() {
-              if (discussion.comments.last.hasNextPage) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              } else {
-                return Text('No more comments'.tr);
-              }
-            }),
+            ),
+            if (discussion.comments.isNotEmpty &&
+                discussion.comments.last.hasNextPage)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Text('No more comments'.tr),
           ],
         ),
       );
-    });
   }
 }

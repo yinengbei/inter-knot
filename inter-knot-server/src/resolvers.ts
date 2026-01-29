@@ -19,12 +19,14 @@ export const resolvers = {
       const skip = args.after ? 1 : 0;
       const cursor = args.after ? { id: parseInt(args.after) } : undefined;
 
-      const where = {
-        OR: [
-          { title: { contains: args.query } },
-          { bodyText: { contains: args.query } },
-        ],
-      };
+      const where = args.query
+        ? {
+            OR: [
+              { title: { contains: args.query } },
+              { bodyText: { contains: args.query } },
+            ],
+          }
+        : {};
 
       const discussions = await context.prisma.discussion.findMany({
         where,
@@ -70,6 +72,7 @@ export const resolvers = {
       return { token, user };
     },
     createDiscussion: async (_parent: any, args: { title: string; bodyHTML: string; bodyText: string; cover?: string }, context: Context) => {
+      console.log('createDiscussion called', { userId: context.userId, args });
       if (!context.userId) throw new Error('Not authenticated');
       return context.prisma.discussion.create({
         data: {
@@ -96,6 +99,8 @@ export const resolvers = {
   },
   Discussion: {
     number: (parent: any) => parent.id,
+    createdAt: (parent: any) => new Date(parent.createdAt).toISOString(),
+    updatedAt: (parent: any) => new Date(parent.updatedAt).toISOString(),
     commentsCount: (parent: any, _args: any, context: Context) => {
       return context.prisma.comment.count({ where: { discussionId: parent.id } });
     },
@@ -129,6 +134,8 @@ export const resolvers = {
     },
   },
   Comment: {
+    createdAt: (parent: any) => new Date(parent.createdAt).toISOString(),
+    updatedAt: (parent: any) => new Date(parent.updatedAt).toISOString(),
     discussion: (parent: any, _args: any, context: Context) => {
         // Optimisation: if parent.discussion is loaded use it, otherwise fetch
         if (parent.discussion) return parent.discussion;
@@ -144,4 +151,5 @@ export const resolvers = {
       createdAt: (parent: any) => new Date(parent.createdAt).toISOString(),
   }
 };
+
 
