@@ -40,84 +40,16 @@ class MyAppBar extends StatelessWidget {
                   children: [
                     Obx(() => Avatar(c.user()?.avatar)),
                     const SizedBox(width: 4),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Obx(() {
-                          return Text(
-                            c.user()?.name ?? 'Not logged in'.tr,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              height: 1,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 4),
-                        Stack(
-                          alignment: Alignment.centerLeft,
-                          children: [
-                            Container(
-                              width: 150,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(maxRadius),
-                                color: const Color(0xff222222),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              alignment: Alignment.topLeft,
-                              child: FractionallySizedBox(
-                                widthFactor: 502 / 1145,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.circular(maxRadius),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xff4661fd),
-                                        Color(0xff10bff0),
-                                      ],
-                                    ),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                ),
-                              ),
-                            ),
-                            const Positioned(
-                              left: 4,
-                              child: Text(
-                                '502/1145',
-                                style: TextStyle(fontSize: 12, height: 1),
-                              ),
-                            ),
-                          ],
+                    Obx(() {
+                      return Text(
+                        c.user()?.name ?? 'Not logged in'.tr,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          height: 1,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
-                    const SizedBox(width: 4),
-                    Column(
-                      children: [
-                        Obx(
-                          () => Text(
-                            c.user()?.level.toString() ?? '0',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              height: 1,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'LEVEL',
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    }),
                     const SizedBox(width: 8),
                   ],
                 ),

@@ -4,7 +4,6 @@ const repo = 'inter-knot';
 const collaborators = ['VacuolePaoo', 'nostalgiatan'];
 const githubLink = 'https://github.com/$owner/$repo';
 const discordLink = 'https://dc.inot.top';
-const docLink = 'https://d.inot.top/';
 const issuesLink = '$githubLink/issues';
 const releasesLink = '$githubLink/releases';
 const advancedSearchTipsLink =

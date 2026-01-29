@@ -25,7 +25,6 @@ dependencies:
   logger: ^2.4.0
   shared_preferences: ^2.3.2
   material_design_icons_flutter: ^7.0.7296
-  package_info_plus: ^8.0.2
   pub_semver: ^2.1.4
   url_launcher: ^6.3.0
   waterfall_flow: ^3.0.3
@@ -57,6 +56,10 @@ flutter:
   assets:
     - assets/
     - assets/images/
+  fonts:
+    - family: ZhCn
+      fonts:
+        - asset: assets/fonts/zh-cn.ttf
 
 msix_config:
   display_name: 绳网

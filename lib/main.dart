@@ -29,6 +29,7 @@ class MyApp extends StatelessWidget {
       onGenerateTitle: (context) => 'Inter-Knot'.tr,
       theme: ThemeData(
         brightness: Brightness.dark,
+        fontFamily: 'ZhCn',
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.dark,

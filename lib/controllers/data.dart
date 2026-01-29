@@ -15,7 +15,6 @@ import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/models/release.dart';
 import 'package:inter_knot/models/report_comment.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Standard shared_preferences or specific wrapper?
 // The file used SharedPreferencesWithCache which is new in flutter/packages?
@@ -48,8 +47,6 @@ class Controller extends GetxController {
   final bookmarks = <HDataModel>{}.obs;
   final history = <HDataModel>{}.obs;
 
-  late final info = PackageInfo.fromPlatform();
-  
   // Api instance
   final api = Get.find<Api>();
 

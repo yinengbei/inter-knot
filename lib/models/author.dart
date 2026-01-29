@@ -2,7 +2,6 @@ class AuthorModel {
   String login;
   String avatar;
   late String name;
-  int level; // Mocked or removed
 
   // Adjusted for custom backend
   String get url => ''; // No external profile URL yet
@@ -10,7 +9,6 @@ class AuthorModel {
   AuthorModel({
     required this.login,
     required this.avatar,
-    required this.level,
     required String? name,
   }) : name = name ?? login;
 
@@ -18,7 +16,6 @@ class AuthorModel {
     return AuthorModel(
       login: json['username'] as String,
       avatar: json['avatarUrl'] as String? ?? '',
-      level: 0, // No repositories count in backend
       name: json['username'] as String?,
     );
   }
