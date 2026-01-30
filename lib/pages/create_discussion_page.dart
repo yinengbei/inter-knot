@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:markdown/markdown.dart' as md;
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key});
@@ -19,15 +20,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
-
-  String _slugify(String input) {
-    final slug = input
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    return slug.isEmpty ? DateTime.now().millisecondsSinceEpoch.toString() : slug;
-  }
 
   Future<void> _submit() async {
     final title = titleController.text.trim();
@@ -48,14 +40,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     });
 
     try {
-      final slug = _slugify(title);
+      final bodyHTML = md.markdownToHtml(body);
 
-      final res = await api.createArticle(
-        title: title,
-        description: body,
-        slug: slug,
-        coverId: cover.isEmpty ? null : cover,
-      );
+      final res = await api.createDiscussion(
+          title, bodyHTML, body, cover.isEmpty ? null : cover);
 
       if (res.hasError) {
         throw Exception(res.statusText ?? 'Unknown error');
@@ -120,7 +108,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             TextField(
               controller: coverController,
               decoration: const InputDecoration(
-                labelText: '封面图片 ID (可选)',
+                labelText: '封面图片 URL (可选)',
                 border: OutlineInputBorder(),
               ),
             ),
