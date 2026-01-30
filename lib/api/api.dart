@@ -146,19 +146,23 @@ class Api extends BaseConnect {
   ) =>
       graphql(graphql_query.addDiscussionComment(discussionId, body));
 
-  Future<Response<Map<String, dynamic>>> createDiscussion(
-    String title,
-    String bodyHTML,
-    String bodyText,
-    String? cover,
-  ) =>
+  Future<Response<Map<String, dynamic>>> createArticle({
+    required String title,
+    required String description,
+    required String slug,
+    String? coverId,
+    String status = 'PUBLISHED',
+  }) =>
       graphql(
-        graphql_query.createDiscussionMutation,
+        graphql_query.createArticleMutation,
         variables: {
-          'title': title,
-          'bodyHTML': bodyHTML,
-          'bodyText': bodyText,
-          'cover': cover,
+          'status': status,
+          'data': {
+            'title': title,
+            'description': description,
+            'slug': slug,
+            if (coverId != null && coverId.isNotEmpty) 'cover': coverId,
+          },
         },
       );
 
