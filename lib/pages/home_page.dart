@@ -39,7 +39,7 @@ class HomePage extends StatelessWidget {
             if (c.isLogin()) {
               return ListTile(
                 onTap: () async {
-                  await c.pref.remove('access_token');
+                  await c.setToken('');
                   c.isLogin(false);
                   Get.rawSnackbar(message: '已退出登录状态'.tr);
                 },
