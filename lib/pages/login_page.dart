@@ -56,6 +56,7 @@ class _LoginPageState extends State<LoginPage> {
       // Update Controller state
       final c = Get.find<Controller>();
       c.user(res.user);
+      await c.ensureAuthorForUser(res.user);
       c.isLogin(true);
       
       Get.back();

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:inter_knot/constants/graphql_query.dart' as graphql_query;
@@ -18,6 +17,7 @@ class AuthApi extends GetConnect {
   void onInit() {
     httpClient.baseUrl = 'https://ik.tiwat.cn';
     httpClient.timeout = const Duration(seconds: 15);
+    httpClient.defaultContentType = 'application/json; charset=utf-8';
   }
 
   Future<({String token, AuthorModel user})> login(
@@ -25,13 +25,14 @@ class AuthApi extends GetConnect {
     final res = await post(
       '/graphql',
       {'query': graphql_query.login(email, password)},
+      contentType: 'application/json',
     );
-    
+
     if (res.hasError) {
       print('Login Error: ${res.statusCode} - ${res.bodyString}');
       throw Exception(res.statusText);
     }
-    
+
     final data = res.body['data']?['login'];
     if (data == null) {
       print('Login Data Null: ${res.body}');
@@ -49,11 +50,12 @@ class AuthApi extends GetConnect {
     final res = await post(
       '/graphql',
       {'query': graphql_query.register(username, email, password)},
+      contentType: 'application/json',
     );
 
     if (res.hasError) {
-       print('Register Error: ${res.statusCode} - ${res.bodyString}');
-       throw Exception(res.statusText);
+      print('Register Error: ${res.statusCode} - ${res.bodyString}');
+      throw Exception(res.statusText);
     }
 
     final data = res.body['data']?['register'];
@@ -75,6 +77,7 @@ class BaseConnect extends GetConnect {
   @override
   void onInit() {
     httpClient.baseUrl = 'https://ik.tiwat.cn';
+    httpClient.defaultContentType = 'application/json; charset=utf-8';
     httpClient.addRequestModifier<dynamic>((request) async {
       var token = box.read<String>('access_token') ?? '';
       if (token.isNotEmpty) {
@@ -93,14 +96,39 @@ class BaseConnect extends GetConnect {
 
   Future<Response<Map<String, dynamic>>> graphql(String query,
           {Map<String, dynamic>? variables}) =>
-      post('/graphql', jsonEncode({'query': query, 'variables': variables}));
+      post(
+        '/graphql',
+        {'query': query, 'variables': variables},
+        contentType: 'application/json',
+      );
 }
 
 class Api extends BaseConnect {
+  String _slugify(String input, {bool ensureUnique = false}) {
+    final normalized = input
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    var slug = normalized.isEmpty ? 'author' : normalized;
+
+    if (ensureUnique) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      slug = '$slug-$timestamp';
+    }
+
+    return slug;
+  }
+
+  Object _coerceId(String value) {
+    final asInt = int.tryParse(value);
+    return asInt ?? value;
+  }
+
   Future<DiscussionModel> getDiscussion(String id) async {
-    // 目前 query 里的 getDiscussion 接受 String
-    final res = await graphql(graphql_query.getDiscussion(id)); 
-    
+    final res = await graphql(graphql_query.getDiscussion(id));
+
     if (res.hasError) {
       print('GetDiscussion Error: ${res.bodyString}');
       throw Exception(res.statusText);
@@ -121,12 +149,11 @@ class Api extends BaseConnect {
       String query, String endCur) async {
     final res = await graphql(graphql_query.search(query, endCur));
     final List<dynamic> nodes = res.body!['data']['articles'] as List? ?? [];
-    
-    // 手动构造分页模型
+
     return PaginationModel(
-       nodes: nodes.map((e) => HDataModel.fromJson(e as Map<String, dynamic>)).toList(),
-       endCursor: (int.parse(endCur.isEmpty ? "0" : endCur) + 20).toString(), 
-       hasNextPage: nodes.length >= 20
+      nodes: nodes.map((e) => HDataModel.fromJson(e as Map<String, dynamic>)).toList(),
+      endCursor: (int.parse(endCur.isEmpty ? "0" : endCur) + 20).toString(),
+      hasNextPage: nodes.length >= 20,
     );
   }
 
@@ -146,21 +173,111 @@ class Api extends BaseConnect {
   ) =>
       graphql(graphql_query.addDiscussionComment(discussionId, body));
 
-  Future<Response<Map<String, dynamic>>> createDiscussion(
-    String title,
-    String bodyHTML,
-    String bodyText,
-    String? cover,
-  ) =>
+  Future<Response<Map<String, dynamic>>> createArticle({
+    required String title,
+    required String description,
+    required String slug,
+    String? coverId,
+    String? authorId,
+    String status = 'PUBLISHED',
+  }) =>
       graphql(
-        graphql_query.createDiscussionMutation,
+        graphql_query.createArticleMutation,
         variables: {
-          'title': title,
-          'bodyHTML': bodyHTML,
-          'bodyText': bodyText,
-          'cover': cover,
+          'status': status,
+          'data': {
+            'title': title,
+            'description': description,
+            'slug': slug,
+            if (coverId != null && coverId.isNotEmpty) 'cover': coverId,
+            if (authorId != null && authorId.isNotEmpty) 'author': authorId,
+          },
         },
       );
+
+  Future<String?> findAuthorIdByName(String name) async {
+    final res = await graphql(graphql_query.getAuthorByName(name));
+    if (res.hasError) {
+      print('FindAuthor Error: ${res.bodyString}');
+      return null;
+    }
+    final list = res.body?['data']?['authors'];
+    if (list is List && list.isNotEmpty) {
+      final first = list.first;
+      if (first is Map) {
+        return first['documentId'] as String?;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> createAuthor({
+    required String name,
+    String? userId,
+    bool ensureUniqueSlug = false,
+  }) async {
+    final slug = _slugify(name, ensureUnique: ensureUniqueSlug);
+    final res = await graphql(
+      graphql_query.createAuthorMutation,
+      variables: {
+        'data': {
+          'name': name,
+          'slug': slug,
+        },
+      },
+    );
+    if (res.hasError) {
+      print('CreateAuthor Error: ${res.bodyString}');
+      if (res.bodyString?.contains('must be unique') == true) {
+        print('Slug conflict detected, retrying find by name');
+        await Future.delayed(const Duration(milliseconds: 300));
+        return await findAuthorIdByName(name);
+      }
+      return null;
+    }
+    final data = res.body?['data']?['createAuthor'];
+    if (data is Map) {
+      return data['documentId'] as String?;
+    }
+    return null;
+  }
+
+  Future<void> linkAuthorToUser({
+    required String authorId,
+    required String userId,
+  }) async {
+    final res = await graphql(
+      graphql_query.updateAuthorMutation,
+      variables: {
+        'documentId': authorId,
+        'data': {
+          'user': _coerceId(userId),
+        },
+      },
+    );
+    if (res.hasError) {
+      print('UpdateAuthor Error: ${res.bodyString}');
+    }
+  }
+
+  Future<String?> ensureAuthorId({
+    required String name,
+    String? userId,
+  }) async {
+    var existingId = await findAuthorIdByName(name);
+    if (existingId != null && existingId.isNotEmpty) return existingId;
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    existingId = await findAuthorIdByName(name);
+    if (existingId != null && existingId.isNotEmpty) return existingId;
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    existingId = await findAuthorIdByName(name);
+    if (existingId != null && existingId.isNotEmpty) return existingId;
+
+    print('Warning: Author not found after retries, creating as fallback');
+    return createAuthor(name: name, userId: null, ensureUniqueSlug: true);
+  }
 
   Future<Response<Map<String, dynamic>>> deleteDiscussion(String id) =>
       graphql(graphql_query.deleteDiscussion(id));
@@ -185,7 +302,8 @@ class Api extends BaseConnect {
   Future<AuthorModel> getUserInfo(String username) async {
     final res = await graphql(graphql_query.getUserInfo(username));
     return AuthorModel.fromJson(
-        res.body!['data']['user'] as Map<String, dynamic>);
+      res.body!['data']['user'] as Map<String, dynamic>,
+    );
   }
 
   Future<ReleaseModel?> getNewVersion(String login) async {

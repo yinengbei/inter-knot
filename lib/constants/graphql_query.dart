@@ -62,7 +62,7 @@ String search(String query, String? endCur, [int length = 20]) => '''
 String getUserInfo(String username) =>
     '{ user(username: "$username") { username avatarUrl createdAt } }'; // Simplified
 
-String getSelfUserInfo() => '{ me { avatarUrl username } }';
+String getSelfUserInfo() => '{ me { id avatarUrl username email } }';
 
 // Pinned discussions not implemented in backend, falling back to search or empty
 String getPinnedDiscussions(String? endCur) =>
@@ -104,10 +104,40 @@ String login(String email, String password) =>
 String register(String username, String email, String password) =>
     'mutation { register(input: { username: "$username", email: "$email", password: "$password" }) { jwt user { username email id } } }';
 
-const String createDiscussionMutation = r'''
-  mutation CreateDiscussion($title: String!, $bodyHTML: String!, $bodyText: String!, $cover: String) {
-    createDiscussion(title: $title, bodyHTML: $bodyHTML, bodyText: $bodyText, cover: $cover) {
-      id
+const String createArticleMutation = r'''
+  mutation CreateArticle($data: ArticleInput!, $status: PublicationStatus) {
+    createArticle(data: $data, status: $status) {
+      documentId
+    }
+  }
+''';
+
+String getAuthorByName(String name) => '''
+  query {
+    authors(filters: { name: { eq: "${queryEncode(name)}" } }) {
+      documentId
+      name
+      avatar {
+        url
+      }
+    }
+  }
+''';
+
+
+const String createAuthorMutation = r'''
+  mutation CreateAuthor($data: AuthorInput!) {
+    createAuthor(data: $data) {
+      documentId
+      name
+    }
+  }
+''';
+
+const String updateAuthorMutation = r'''
+  mutation UpdateAuthor($documentId: ID!, $data: AuthorInput!) {
+    updateAuthor(documentId: $documentId, data: $data) {
+      documentId
     }
   }
 ''';

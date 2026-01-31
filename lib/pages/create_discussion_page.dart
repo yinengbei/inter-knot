@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/controllers/data.dart';
-import 'package:markdown/markdown.dart' as md;
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key});
@@ -20,6 +19,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
+
+  String _slugify(String input) {
+    final normalized = input
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return normalized.isEmpty ? 'post' : normalized;
+  }
 
   Future<void> _submit() async {
     final title = titleController.text.trim();
@@ -40,10 +49,20 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     });
 
     try {
-      final bodyHTML = md.markdownToHtml(body);
+      final slug = _slugify(title);
+      final user = c.user.value;
+      final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
+      if (authorId == null || authorId.isEmpty) {
+        throw Exception('无法关联作者，请重新登录后再试');
+      }
 
-      final res = await api.createDiscussion(
-          title, bodyHTML, body, cover.isEmpty ? null : cover);
+      final res = await api.createArticle(
+        title: title,
+        description: body,
+        slug: slug,
+        coverId: cover.isEmpty ? null : cover,
+        authorId: authorId,
+      );
 
       if (res.hasError) {
         throw Exception(res.statusText ?? 'Unknown error');

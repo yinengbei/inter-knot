@@ -68,14 +68,25 @@ class DiscussionModel {
     
     // 处理封面图: 优先取 json['cover']，如果没有则尝试从 parseHtml 获取
     String? coverUrl;
-    if (json['cover'] != null && json['cover']['url'] != null) {
-        coverUrl = json['cover']['url'] as String;
-        if (!coverUrl.startsWith('http')) {
-            coverUrl = 'https://ik.tiwat.cn$coverUrl';
-        }
+    final coverData = json['cover'];
+    if (coverData is Map && coverData['url'] != null) {
+      coverUrl = coverData['url'] as String;
+      if (!coverUrl.startsWith('http')) {
+        coverUrl = 'https://ik.tiwat.cn$coverUrl';
+      }
     }
     
     final commentsJson = json['comments'] as Map<String, dynamic>?;
+
+    final authorData = json['author'];
+    final author = authorData is Map<String, dynamic>
+        ? AuthorModel.fromJson(authorData)
+        : AuthorModel(
+            login: 'unknown',
+            avatar: 'https://ik.tiwat.cn/uploads/default_avatar.png',
+            name: 'Unknown',
+            email: null,
+          );
 
     return DiscussionModel(
       title: json['title'] as String,
@@ -88,7 +99,7 @@ class DiscussionModel {
       commentsCount: json['commentsCount'] as int? ?? 0,
       lastEditedAt:
           (json['updatedAt'] as String?).use((v) => DateTime.parse(v)),
-      author: AuthorModel.fromJson(json['author'] as Map<String, dynamic>),
+      author: author,
       comments: commentsJson != null
           ? [
               PaginationModel.fromJson(

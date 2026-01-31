@@ -38,6 +38,7 @@ class Controller extends GetxController {
 
   final isLogin = false.obs;
   final user = Rx<AuthorModel?>(null); // Author -> AuthorModel
+  final authorId = RxnString();
 
   final report = <String, Set<ReportCommentModel>>{}.obs;
 
@@ -77,6 +78,7 @@ class Controller extends GetxController {
        try {
          final u = await api.getSelfUserInfo(''); 
          user(u);
+         await ensureAuthorForUser(u);
          isLogin(true);
        } catch (e) {
          // Token might be invalid
@@ -92,12 +94,14 @@ class Controller extends GetxController {
               try {
                 final u = await api.getSelfUserInfo('');
                 user(u);
+                await ensureAuthorForUser(u);
               } catch(e) {
                 logger.e('Failed to fetch user after login', error: e);
               }
           }
        } else {
          user.value = null;
+         authorId.value = null;
          box.remove('access_token');
        }
     });
@@ -167,6 +171,20 @@ class Controller extends GetxController {
     searchEndCur = pagination.endCursor;
     searchHasNextPage.value = pagination.hasNextPage;
     searchResult.addAll(pagination.nodes);
+  }
+
+  Future<String?> ensureAuthorForUser(AuthorModel? u) async {
+    if (u == null) return null;
+    final name = (u.name.isNotEmpty ? u.name : u.login).trim();
+    if (name.isEmpty) return null;
+    final id = await api.ensureAuthorId(
+      name: name,
+      userId: u.userId,
+    );
+    if (id != null && id.isNotEmpty) {
+      authorId.value = id;
+    }
+    return id;
   }
 }
 
