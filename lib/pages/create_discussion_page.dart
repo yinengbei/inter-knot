@@ -30,6 +30,38 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     return normalized.isEmpty ? 'post' : normalized;
   }
 
+  String _slugifyUnique(String input) {
+    final base = _slugify(input);
+    final suffix = DateTime.now().millisecondsSinceEpoch;
+    return '$base-$suffix';
+  }
+
+  bool _isSlugUniqueError(Map<String, dynamic>? body) {
+    final errors = body?['errors'];
+    if (errors is! List || errors.isEmpty) return false;
+    final first = errors.first;
+    if (first is! Map) return false;
+    final message = first['message']?.toString().toLowerCase() ?? '';
+    if (message.contains('unique')) return true;
+    final ext = first['extensions'];
+    if (ext is Map) {
+      final details = ext['error']?['details']?['errors'];
+      if (details is List) {
+        for (final item in details) {
+          if (item is Map) {
+            final path = item['path'];
+            final msg = item['message']?.toString().toLowerCase() ?? '';
+            if (msg.contains('unique') ||
+                (path is List && path.contains('slug'))) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   Future<void> _submit() async {
     final title = titleController.text.trim();
     final body = bodyController.text;
@@ -49,20 +81,31 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     });
 
     try {
-      final slug = _slugify(title);
+      var slug = _slugify(title);
       final user = c.user.value;
       final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
       if (authorId == null || authorId.isEmpty) {
         throw Exception('无法关联作者，请重新登录后再试');
       }
 
-      final res = await api.createArticle(
+      var res = await api.createArticle(
         title: title,
         description: body,
         slug: slug,
         coverId: cover.isEmpty ? null : cover,
         authorId: authorId,
       );
+
+      if (res.body?['errors'] != null && _isSlugUniqueError(res.body)) {
+        slug = _slugifyUnique(title);
+        res = await api.createArticle(
+          title: title,
+          description: body,
+          slug: slug,
+          coverId: cover.isEmpty ? null : cover,
+          authorId: authorId,
+        );
+      }
 
       if (res.hasError) {
         throw Exception(res.statusText ?? 'Unknown error');
