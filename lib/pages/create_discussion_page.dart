@@ -20,6 +20,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
 
+  String _slugify(String input) {
+    final normalized = input
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return normalized.isEmpty ? 'post' : normalized;
+  }
+
   Future<void> _submit() async {
     final title = titleController.text.trim();
     final body = bodyController.text;
@@ -40,14 +50,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
     try {
       final slug = _slugify(title);
-      String? authorId;
       final user = c.user.value;
-      final authorName = user?.name ?? user?.login;
-      if (authorName != null && authorName.trim().isNotEmpty) {
-        authorId = await api.ensureAuthorId(
-          name: authorName.trim(),
-          email: user?.email,
-        );
+      final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
+      if (authorId == null || authorId.isEmpty) {
+        throw Exception('无法关联作者，请重新登录后再试');
       }
 
       final res = await api.createArticle(
