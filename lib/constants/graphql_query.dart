@@ -3,6 +3,7 @@ import 'package:inter_knot/helpers/query_encode.dart';
 String getDiscussion(String id) => '''
   query {
     article(documentId: "$id") {
+      documentId
       title
       description
       cover {
@@ -95,8 +96,21 @@ String getComments(String id, String? endCur) => '''
 String deleteDiscussion(String id) =>
     'mutation { deleteDiscussion(id: "$id") { id } }'; // Not implemented in backend yet
 
-String addDiscussionComment(String discussionId, String body) =>
-    'mutation { createComment(data: { article: "$discussionId", content: "${queryEncode(body)}" }) { documentId } }';
+const String addDiscussionCommentMutation = r'''
+  mutation CreateComment($data: CommentInput!) {
+    createComment(data: $data) {
+      documentId
+      content
+      createdAt
+      author {
+        name
+        avatar {
+          url
+        }
+      }
+    }
+  }
+''';
 
 String login(String email, String password) =>
     'mutation { login(input: { identifier: "$email", password: "$password" }) { jwt user { username email id } } }';

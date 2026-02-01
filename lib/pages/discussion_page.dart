@@ -8,6 +8,7 @@ import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/components/comment.dart';
 import 'package:inter_knot/components/comment_count.dart';
 import 'package:inter_knot/components/my_chip.dart';
+import 'package:inter_knot/components/comment_input_dialog.dart';
 import 'package:inter_knot/components/report_discussion_comment.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
@@ -17,6 +18,7 @@ import 'package:inter_knot/helpers/logger.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
+import 'package:inter_knot/pages/login_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class DiscussionPage extends StatefulWidget {
@@ -36,6 +38,7 @@ class DiscussionPage extends StatefulWidget {
 class _DiscussionPageState extends State<DiscussionPage> {
   final scrollController = ScrollController();
   final c = Get.find<Controller>();
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -44,10 +47,20 @@ class _DiscussionPageState extends State<DiscussionPage> {
       c.history({widget.hData, ...c.history});
     });
     scrollController.addListener(() {
+      if (_isLoadingMore) return;
       final maxScroll = scrollController.position.maxScrollExtent;
       final currentScroll = scrollController.position.pixels;
       if (maxScroll - currentScroll < 200 && widget.discussion.hasNextPage()) {
-        widget.discussion.fetchComments();
+        _isLoadingMore = true;
+        widget.discussion.fetchComments().then((_) {
+          if (mounted) {
+            setState(() {});
+          }
+        }).catchError((e) {
+          print('Error loading more comments: $e');
+        }).whenComplete(() {
+          _isLoadingMore = false;
+        });
       }
     });
     widget.discussion.fetchComments().then((e) async {
@@ -55,6 +68,9 @@ class _DiscussionPageState extends State<DiscussionPage> {
         while (scrollController.position.maxScrollExtent == 0 &&
             widget.discussion.hasNextPage()) {
           await widget.discussion.fetchComments();
+        }
+        if (mounted) {
+          setState(() {});
         }
       } catch (e, s) {
         logger.e('Failed to get scroll position', error: e, stackTrace: s);
@@ -279,14 +295,23 @@ class _DiscussionPageState extends State<DiscussionPage> {
   }
 }
 
-class RightBox extends StatelessWidget {
+class RightBox extends StatefulWidget {
   const RightBox({super.key, required this.discussion, required this.hData});
 
   final DiscussionModel discussion;
   final HDataModel hData;
 
   @override
+  State<RightBox> createState() => _RightBoxState();
+}
+
+class _RightBoxState extends State<RightBox> {
+  final c = Get.find<Controller>();
+
+  @override
   Widget build(BuildContext context) {
+    final discussion = widget.discussion;
+    final hData = widget.hData;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -338,8 +363,25 @@ class RightBox extends StatelessWidget {
                         Border.all(color: const Color(0xff2D2D2D), width: 4),
                   ),
                   child: ClickRegion(
-                    onTap: () =>
-                        launchUrlString('${discussion.url}#new_comment_form'),
+                    onTap: () {
+                      if (!c.isLogin.value) {
+                        Get.to(() => const LoginPage());
+                        return;
+                      }
+                      Get.dialog(
+                        CommentInputDialog(
+                          discussionId: discussion.id,
+                          onCommentAdded: () {
+                            discussion.comments.clear();
+                            discussion.fetchComments().then((_) {
+                              if (mounted) {
+                                setState(() {});
+                              }
+                            });
+                          },
+                        ),
+                      );
+                    },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

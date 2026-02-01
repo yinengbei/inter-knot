@@ -160,18 +160,60 @@ class Api extends BaseConnect {
   Future<PaginationModel<CommentModel>> getComments(
       String id, String endCur) async {
     final res = await graphql(graphql_query.getComments(id, endCur));
-    return PaginationModel.fromJson(
-      res.body!['data']['getDiscussion']['comments']
-          as Map<String, dynamic>,
-      CommentModel.fromJson,
+    
+    if (res.hasError) {
+      print('GetComments Error: ${res.statusCode} - ${res.bodyString}');
+      throw Exception(res.statusText);
+    }
+    
+    final data = res.body?['data'];
+    if (data == null) {
+      print('GetComments Data Null. Body: ${res.body}');
+      throw Exception('Failed to get comments');
+    }
+    
+    // Strapi GraphQL 返回的是直接的数组
+    final commentsList = data['comments'] as List? ?? [];
+    final comments = commentsList
+        .cast<Map<String, dynamic>>()
+        .map(CommentModel.fromJson)
+        .toList();
+    
+    // 计算分页信息
+    final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
+    final limit = 20;
+    final hasNextPage = comments.length >= limit;
+    final nextEndCur = hasNextPage ? (start + limit).toString() : null;
+    
+    return PaginationModel(
+      nodes: comments,
+      hasNextPage: hasNextPage,
+      endCursor: nextEndCur,
     );
   }
 
   Future<Response<Map<String, dynamic>>> addDiscussionComment(
     String discussionId,
-    String body,
-  ) =>
-      graphql(graphql_query.addDiscussionComment(discussionId, body));
+    String body, {
+    String? authorId,
+  }) {
+    if (discussionId.isEmpty) {
+      throw Exception('Discussion ID cannot be empty');
+    }
+    
+    print('Adding comment to discussion: $discussionId, author: $authorId');
+    
+    return graphql(
+      graphql_query.addDiscussionCommentMutation,
+      variables: {
+        'data': {
+          'article': discussionId,
+          'content': body,
+          if (authorId != null && authorId.isNotEmpty) 'author': authorId,
+        },
+      },
+    );
+  }
 
   Future<Response<Map<String, dynamic>>> createArticle({
     required String title,

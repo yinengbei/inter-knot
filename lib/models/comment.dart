@@ -24,7 +24,10 @@ class CommentModel {
   }
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
-    final (:cover, :html) = parseHtml(json['bodyHTML'] as String, true);
+    // 处理 content 字段（可能是 Markdown 或 HTML）
+    final content = json['content'] as String? ?? json['bodyHTML'] as String? ?? '';
+    final (:cover, :html) = parseHtml(content, true);
+    
     return CommentModel(
       author: AuthorModel.fromJson(json['author'] as Map<String, dynamic>),
       bodyHTML: html,
@@ -32,7 +35,7 @@ class CommentModel {
       lastEditedAt:
           (json['updatedAt'] as String?).use((v) => DateTime.parse(v)),
       replies: [], // Replies not supported in backend yet
-      id: json['id'].toString(),
+      id: (json['documentId'] as String?) ?? json['id']?.toString() ?? '',
       url: '', // URL not supported yet
     );
   }

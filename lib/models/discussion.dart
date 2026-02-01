@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/helpers/parse_html.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
@@ -19,9 +21,44 @@ class DiscussionModel {
   List<PaginationModel<CommentModel>> comments;
   String get bodyText => rawBodyText.replaceAll(RegExp(r'\s+'), ' ').trim();
   String get url => ''; // Placeholder
-  // Placeholder methods for compatibility
-  bool hasNextPage() => false; 
-  Future<void> fetchComments() async {}
+  
+  Api? _api;
+  Api get api => _api ??= Get.find<Api>();
+  
+  bool hasNextPage() {
+
+    if (comments.isEmpty) return true;
+
+    return comments.last.hasNextPage;
+  }
+  
+  bool _isLoadingComments = false;
+  
+  Future<void> fetchComments() async {
+    if (_isLoadingComments) return;
+    if (comments.isNotEmpty && !comments.last.hasNextPage) return;
+    
+    _isLoadingComments = true;
+    final lastPage = comments.isEmpty ? null : comments.last;
+    final endCur = lastPage?.endCursor ?? '0';
+    
+    try {
+      final pagination = await api.getComments(id, endCur);
+      
+      if (comments.isEmpty) {
+        comments = [pagination];
+      } else {
+        comments.last.nodes.addAll(pagination.nodes);
+        comments.last.hasNextPage = pagination.hasNextPage;
+        comments.last.endCursor = pagination.endCursor;
+      }
+    } catch (e) {
+      print('Failed to fetch comments: $e');
+      rethrow;
+    } finally {
+      _isLoadingComments = false;
+    }
+  }
 
   DiscussionModel({
     required this.title,

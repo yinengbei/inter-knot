@@ -16,13 +16,35 @@ class Comment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final allComments = discussion.comments.map((e) => e.nodes).flat.toList();
+    
+    if (allComments.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
     return SizedBox(
       width: double.infinity,
-      child: Column(
-        children: [
-          for (final (index, comment)
-              in discussion.comments.map((e) => e.nodes).flat.indexed)
-            ListTile(
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: allComments.length + 1,
+        itemBuilder: (context, index) {
+          if (index >= allComments.length) {
+            if (discussion.comments.isNotEmpty &&
+                discussion.comments.last.hasNextPage) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('No more comments'.tr),
+            );
+          }
+          
+          final comment = allComments[index];
+          return ListTile(
                 titleAlignment: ListTileTitleAlignment.top,
                 contentPadding: EdgeInsets.zero,
                 horizontalTitleGap: 8,
@@ -70,15 +92,6 @@ class Comment extends StatelessWidget {
                       'Published on: '.tr +
                           comment.createdAt.toLocal().toString().split('.').first,
                     ),
-                    if (comment.lastEditedAt != null)
-                      Text(
-                        'Last edited on: '.tr +
-                            comment.lastEditedAt!
-                                .toLocal()
-                                .toString()
-                                .split('.')
-                                .first,
-                      ),
                     const SizedBox(height: 8),
                     SelectionArea(
                       child: HtmlWidget(
@@ -90,17 +103,9 @@ class Comment extends StatelessWidget {
                     Replies(comment: comment, discussion: discussion),
                 ],
               ),
-            ),
-            if (discussion.comments.isNotEmpty &&
-                discussion.comments.last.hasNextPage)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              Text('No more comments'.tr),
-          ],
-        ),
-      );
+          );
+        },
+      ),
+    );
   }
 }

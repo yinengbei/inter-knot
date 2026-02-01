@@ -71,11 +71,6 @@ class Replies extends StatelessWidget {
                 Text(
                   'Published on: '.tr + reply.createdAt.toLocal().toString(),
                 ),
-                if (reply.lastEditedAt != null)
-                  Text(
-                    'Last edited on: '.tr +
-                        reply.lastEditedAt!.toLocal().toString(),
-                  ),
                 const SizedBox(height: 8),
                 SelectionArea(
                   child: HtmlWidget(
