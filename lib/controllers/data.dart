@@ -133,14 +133,14 @@ class Controller extends GetxController {
   }
 
   Future<void> refreshFavorites() async {
-    final userId = user.value?.userId;
-    if (isLogin.isFalse || userId == null || userId.isEmpty) {
+    final username = user.value?.login ?? '';
+    if (isLogin.isFalse || username.isEmpty) {
       bookmarks.clear();
       favoriteIds.clear();
       return;
     }
 
-    final result = await api.getFavorites(userId, '');
+    final result = await api.getFavorites(username, '');
     bookmarks(result.items.toSet());
     favoriteIds.assignAll(result.favoriteIds);
   }
@@ -151,7 +151,8 @@ class Controller extends GetxController {
       return;
     }
     final userId = user.value?.userId;
-    if (userId == null || userId.isEmpty) {
+    final username = user.value?.login ?? '';
+    if (userId == null || userId.isEmpty || username.isEmpty) {
       Get.rawSnackbar(message: '用户信息获取失败'.tr);
       return;
     }
@@ -162,7 +163,7 @@ class Controller extends GetxController {
     var favoriteId = favoriteIds[articleId];
     if (favoriteId == null) {
       favoriteId = await api.getFavoriteId(
-        userId: userId,
+        username: username,
         articleId: articleId,
       );
       if (favoriteId != null && favoriteId.isNotEmpty) {

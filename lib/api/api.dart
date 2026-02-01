@@ -216,8 +216,8 @@ class Api extends BaseConnect {
   }
 
   Future<({List<HDataModel> items, Map<String, String> favoriteIds})>
-      getFavorites(String userId, String endCur) async {
-    final res = await graphql(graphql_query.getFavorites(userId, endCur));
+      getFavorites(String username, String endCur) async {
+    final res = await graphql(graphql_query.getFavorites(username, endCur));
     if (res.hasError) {
       print('GetFavorites Error: ${res.bodyString}');
       return (items: <HDataModel>[], favoriteIds: <String, String>{});
@@ -248,10 +248,11 @@ class Api extends BaseConnect {
   }
 
   Future<String?> getFavoriteId({
-    required String userId,
+    required String username,
     required String articleId,
   }) async {
-    final res = await graphql(graphql_query.getFavoriteId(userId, articleId));
+    final res =
+        await graphql(graphql_query.getFavoriteId(username, articleId));
     if (res.hasError) {
       print('GetFavoriteId Error: ${res.bodyString}');
       return null;
