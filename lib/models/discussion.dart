@@ -133,7 +133,12 @@ class DiscussionModel {
       // number: ... Removed
       id: json['documentId'] as String? ?? json['id']?.toString() ?? '', // 优先 documentId
       createdAt: DateTime.parse(json['createdAt'] as String),
-      commentsCount: json['commentsCount'] as int? ?? 0,
+      commentsCount: (json['commentsCount'] ?? json['commentscount']) is int
+          ? (json['commentsCount'] ?? json['commentscount']) as int
+          : int.tryParse(
+                (json['commentsCount'] ?? json['commentscount']).toString(),
+              ) ??
+              0,
       lastEditedAt:
           (json['updatedAt'] as String?).use((v) => DateTime.parse(v)),
       author: author,
