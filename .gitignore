@@ -49,3 +49,4 @@ app.*.map.json
 
 lib/secret.dart
 GraphQL API View LLMs/
+*.md
