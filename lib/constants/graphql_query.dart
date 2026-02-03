@@ -26,6 +26,7 @@ String getDiscussion(String id) => '''
       }
       createdAt
       updatedAt
+      commentscount
       author {
         name
         avatar {
@@ -50,6 +51,7 @@ String search(String query, String? endCur, [int length = 20]) => '''
         url
       }
       updatedAt
+      commentscount
       author {
         name
         avatar {
