@@ -112,10 +112,10 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
           children: [
             Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     '写评论',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),

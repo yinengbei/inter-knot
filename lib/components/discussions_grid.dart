@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:inter_knot/components/discussion_card.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/models/h_data.dart';
@@ -114,15 +113,15 @@ class DiscussionGrid extends StatelessWidget {
                     clipBehavior: Clip.antiAlias,
                     color: const Color(0xff222222),
                     child: InkWell(
-                      onTap: () => launchUrlString(item.url),
-                      child: AspectRatio(
-                        aspectRatio: 5 / 6,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Center(child: Text('讨论已删除')),
-                        ),
+                    onTap: () => launchUrlString(item.url),
+                    child: const AspectRatio(
+                      aspectRatio: 5 / 6,
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: Text('讨论已删除')),
                       ),
                     ),
+                  ),
                   );
                 }
                 return Card(

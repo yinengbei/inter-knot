@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:get/get.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/components/replies.dart';

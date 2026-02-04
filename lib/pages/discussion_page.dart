@@ -386,12 +386,12 @@ class _RightBoxState extends State<RightBox> {
                         ),
                       );
                     },
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.add_comment_outlined),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Icon(Icons.add_comment_outlined),
+                        SizedBox(width: 8),
+                        Text(
                           '写评论',
                           style: TextStyle(fontSize: 16),
                         ),

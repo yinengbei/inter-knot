@@ -54,7 +54,7 @@ class _DiscussionCardState extends State<DiscussionCard>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           '此讨论涉嫌违规',
                         ),
                         Text(
@@ -93,12 +93,12 @@ class _DiscussionCardState extends State<DiscussionCard>
                         ),
                       ),
                       if (widget.hData.isPin)
-                        Positioned(
+                        const Positioned(
                           top: 8,
                           right: 12,
                           child: Text(
                             '置顶',
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                     ],

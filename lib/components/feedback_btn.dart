@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/helpers/copy_text.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
