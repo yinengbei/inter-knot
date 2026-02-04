@@ -17,6 +17,7 @@
     <base href="$FLUTTER_BASE_HREF" />
 
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
     <meta name="description" content="绳网是一个游戏、技术交流平台" />
 
@@ -31,8 +32,46 @@
 
     <title>绳网</title>
     <link rel="manifest" href="manifest.json" />
+    <link rel="preload" as="image" href="images/loading.gif" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        width: 100%;
+        position: fixed;
+      }
+      #flutter-loading-screen {
+        position: fixed;
+        inset: 0;
+        box-sizing: border-box;
+        z-index: 9999;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        background: #fff;
+        padding: 24px;
+      }
+      #flutter-loading-screen img {
+        width: 530px;
+        max-width: 100%;
+        height: auto;
+      }
+      @media (max-width: 768px) {
+        #flutter-loading-screen {
+          padding: 16px;
+        }
+        #flutter-loading-screen img {
+          max-width: min(85vw, 530px);
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="flutter-loading-screen">
+      <img src="images/loading.gif" alt="加载中" fetchpriority="high" />
+    </div>
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>
