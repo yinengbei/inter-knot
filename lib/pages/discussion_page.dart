@@ -7,8 +7,8 @@ import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/components/comment.dart';
 import 'package:inter_knot/components/comment_count.dart';
-import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/components/comment_input_dialog.dart';
+import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/components/report_discussion_comment.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
@@ -57,7 +57,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
             setState(() {});
           }
         }).catchError((e) {
-          print('Error loading more comments: $e');
+          logger.e('Error loading more comments', error: e);
         }).whenComplete(() {
           _isLoadingMore = false;
         });
@@ -452,7 +452,7 @@ class _RightBoxState extends State<RightBox> {
                           Border.all(color: const Color(0xff2D2D2D), width: 4),
                     ),
                     child: ClickRegion(
-                      onTap: () async => c.toggleFavorite(hData),
+                      onTap: () => c.toggleFavorite(hData),
                       child: Icon(
                         isLiked ? Icons.favorite : Icons.favorite_outline,
                       ),

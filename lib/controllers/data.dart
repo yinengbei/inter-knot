@@ -194,8 +194,8 @@ class Controller extends GetxController {
     }
   }
 
-  FutureOr<void> getVersionHandle(ReleaseModel? release) async {
-      // Keep existing logic if compatible
+  void getVersionHandle(ReleaseModel? release) {
+    // Keep existing logic if compatible
   }
 
   bool mustUpdate(Version newVer, Version curVer) =>

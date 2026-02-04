@@ -3,9 +3,9 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/my_chip.dart';
+import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
-import 'package:inter_knot/constants/globals.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class Replies extends StatelessWidget {

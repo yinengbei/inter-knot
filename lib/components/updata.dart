@@ -93,36 +93,34 @@ class _UpdataState extends State<Updata> {
           ListTile(title: Text('Accelerator'.tr)),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Column(
+            child: Obx(
+              // ignore: prefer_const_constructors - groupValue/onChanged are not const
+              () => RadioGroup<String>(
+                groupValue: c.accelerator(),
+                onChanged: (String? v) {
+                  if (v != null) c.accelerator(v);
+                },
+                // Row cannot be const due to for-loop children
+                child: Row(
                   children: [
-                    Obx(
-                      () => Radio(
-                        value: '',
-                        groupValue: c.accelerator(),
-                        onChanged: c.accelerator.call,
-                      ),
+                    const Column(
+                      children: [
+                        Radio<String>(value: ''),
+                        Text('Github'),
+                      ],
                     ),
-                    const Text('Github'),
+                    for (final e in f) ...[
+                      const SizedBox(width: 8),
+                      Column(
+                        children: [
+                          Radio<String>(value: 'https://$e/'),
+                          Text(e),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-                for (final e in f) ...[
-                  const SizedBox(width: 8),
-                  Column(
-                    children: [
-                      Obx(
-                        () => Radio(
-                          value: 'https://$e/',
-                          groupValue: c.accelerator(),
-                          onChanged: c.accelerator.call,
-                        ),
-                      ),
-                      Text(e),
-                    ],
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ],

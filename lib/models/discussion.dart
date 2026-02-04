@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/helpers/parse_html.dart';
@@ -53,7 +54,7 @@ class DiscussionModel {
         comments.last.endCursor = pagination.endCursor;
       }
     } catch (e) {
-      print('Failed to fetch comments: $e');
+      debugPrint('Failed to fetch comments: $e');
       rethrow;
     } finally {
       _isLoadingComments = false;
@@ -80,18 +81,19 @@ class DiscussionModel {
     String rawBody = textVal is String ? textVal : '';
     
     if (json['blocks'] != null) {
-       final blocks = json['blocks'] as List;
-       for (final block in blocks) {
-          final type = block['__typename'] as String?;
-          // ComponentSharedRichText -> body
-          if (type == 'ComponentSharedRichText' && block['body'] != null) {
-             rawBody += '\n\n' + (block['body'] as String);
-          }
-          // ComponentSharedQuote -> body
-          else if (type == 'ComponentSharedQuote' && block['body'] != null) {
-             rawBody += '\n\n> ' + (block['body'] as String);
-          }
-       }
+      final blocks = json['blocks'] as List<dynamic>;
+      for (final block in blocks) {
+        if (block is! Map<String, dynamic>) continue;
+        final type = block['__typename'] as String?;
+        // ComponentSharedRichText -> body
+        if (type == 'ComponentSharedRichText' && block['body'] != null) {
+          rawBody += '\n\n${block['body'] as String}';
+        }
+        // ComponentSharedQuote -> body
+        else if (type == 'ComponentSharedQuote' && block['body'] != null) {
+          rawBody += '\n\n> ${block['body'] as String}';
+        }
+      }
     }
 
     // Convert Markdown to HTML
@@ -105,7 +107,7 @@ class DiscussionModel {
     // 处理封面图: 优先取 json['cover']，如果没有则尝试从 parseHtml 获取
     String? coverUrl;
     final coverData = json['cover'];
-    if (coverData is Map && coverData['url'] != null) {
+    if (coverData is Map<String, dynamic> && coverData['url'] != null) {
       coverUrl = coverData['url'] as String;
       if (!coverUrl.startsWith('http')) {
         coverUrl = 'https://ik.tiwat.cn$coverUrl';
@@ -121,7 +123,6 @@ class DiscussionModel {
             login: 'unknown',
             avatar: 'https://ik.tiwat.cn/uploads/default_avatar.png',
             name: 'Unknown',
-            email: null,
           );
 
     return DiscussionModel(

@@ -61,7 +61,7 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
         return;
       }
       
-      print('Submitting comment for discussion: ${widget.discussionId}, author: $authorId');
+      debugPrint('Submitting comment for discussion: ${widget.discussionId}, author: $authorId');
       final res = await api.addDiscussionComment(
         widget.discussionId,
         content,
@@ -73,9 +73,11 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
       }
 
       if (res.body?['errors'] != null) {
-        final errors = res.body!['errors'] as List;
+        final errors = res.body!['errors'] as List<dynamic>;
         if (errors.isNotEmpty) {
-          throw Exception(errors[0]['message'] ?? 'Failed to add comment');
+          final first = errors[0];
+          final msg = first is Map ? first['message']?.toString() : null;
+          throw Exception(msg ?? 'Failed to add comment');
         }
       }
 
@@ -166,4 +168,3 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
     );
   }
 }
-

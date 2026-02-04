@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/constants/graphql_query.dart' as graphql_query;
 import 'package:inter_knot/helpers/box.dart';
@@ -10,6 +11,7 @@ import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:inter_knot/models/release.dart';
+import 'package:inter_knot/models/report_comment.dart';
 import 'package:inter_knot/pages/login_page.dart';
 
 class AuthApi extends GetConnect {
@@ -29,14 +31,20 @@ class AuthApi extends GetConnect {
     );
 
     if (res.hasError) {
-      print('Login Error: ${res.statusCode} - ${res.bodyString}');
+      debugPrint('Login Error: ${res.statusCode} - ${res.bodyString}');
       throw Exception(res.statusText);
     }
 
-    final data = res.body['data']?['login'];
+    final body = res.body as Map<String, dynamic>?;
+    final dataMap = body?['data'] as Map<String, dynamic>?;
+    final data = dataMap?['login'] as Map<String, dynamic>?;
     if (data == null) {
-      print('Login Data Null: ${res.body}');
-      throw Exception('Login failed: ${res.body['errors']?[0]['message'] ?? "Unknown error"}');
+      debugPrint('Login Data Null: ${res.body}');
+      final errors = body?['errors'] as List<dynamic>?;
+      final msg = errors != null && errors.isNotEmpty && errors[0] is Map
+          ? (errors[0] as Map)['message']?.toString()
+          : null;
+      throw Exception('Login failed: ${msg ?? "Unknown error"}');
     }
 
     return (
@@ -54,14 +62,20 @@ class AuthApi extends GetConnect {
     );
 
     if (res.hasError) {
-      print('Register Error: ${res.statusCode} - ${res.bodyString}');
+      debugPrint('Register Error: ${res.statusCode} - ${res.bodyString}');
       throw Exception(res.statusText);
     }
 
-    final data = res.body['data']?['register'];
+    final body = res.body as Map<String, dynamic>?;
+    final dataMap = body?['data'] as Map<String, dynamic>?;
+    final data = dataMap?['register'] as Map<String, dynamic>?;
     if (data == null) {
-      print('Register Data Null: ${res.body}');
-      throw Exception('Registration failed: ${res.body['errors']?[0]['message'] ?? "Unknown error"}');
+      debugPrint('Register Data Null: ${res.body}');
+      final errors = body?['errors'] as List<dynamic>?;
+      final msg = errors != null && errors.isNotEmpty && errors[0] is Map
+          ? (errors[0] as Map)['message']?.toString()
+          : null;
+      throw Exception('Registration failed: ${msg ?? "Unknown error"}');
     }
 
     return (
@@ -78,12 +92,12 @@ class BaseConnect extends GetConnect {
   void onInit() {
     httpClient.baseUrl = 'https://ik.tiwat.cn';
     httpClient.defaultContentType = 'application/json';
-    httpClient.addRequestModifier<dynamic>((request) async {
-      var token = box.read<String>('access_token') ?? '';
+    httpClient.addRequestModifier<dynamic>((request) {
+      final token = box.read<String>('access_token') ?? '';
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-      return request;
+      return Future.value(request);
     });
     httpClient.addResponseModifier((req, rep) {
       if (rep.statusCode == HttpStatus.unauthorized) {
@@ -108,8 +122,8 @@ class Api extends BaseConnect {
     final normalized = input
         .toLowerCase()
         .trim()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp('[^a-z0-9]+'), '-')
+        .replaceAll(RegExp('-{2,}'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
     var slug = normalized.isEmpty ? 'author' : normalized;
 
@@ -130,29 +144,30 @@ class Api extends BaseConnect {
     final res = await graphql(graphql_query.getDiscussion(id));
 
     if (res.hasError) {
-      print('GetDiscussion Error: ${res.bodyString}');
+      debugPrint('GetDiscussion Error: ${res.bodyString}');
       throw Exception(res.statusText);
     }
 
-    final data = res.body?['data'];
-    if (data == null || data['article'] == null) {
-      print('GetDiscussion Data Null for ID: $id. Body: ${res.body}');
+    final Map<String, dynamic>? body = res.body;
+    final Map<String, dynamic>? data = body?['data'] as Map<String, dynamic>?;
+    final article = data?['article'] as Map<String, dynamic>?;
+    if (article == null) {
+      debugPrint('GetDiscussion Data Null for ID: $id. Body: ${res.body}');
       throw Exception('Discussion not found');
     }
 
-    return DiscussionModel.fromJson(
-      data['article'] as Map<String, dynamic>,
-    );
+    return DiscussionModel.fromJson(article);
   }
 
   Future<PaginationModel<HDataModel>> search(
       String query, String endCur) async {
     final res = await graphql(graphql_query.search(query, endCur));
-    final List<dynamic> nodes = res.body!['data']['articles'] as List? ?? [];
+    final Map<String, dynamic> body = res.body!;
+    final List<dynamic> nodes = (body['data'] as Map<String, dynamic>)['articles'] as List<dynamic>? ?? [];
 
     return PaginationModel(
       nodes: nodes.map((e) => HDataModel.fromJson(e as Map<String, dynamic>)).toList(),
-      endCursor: (int.parse(endCur.isEmpty ? "0" : endCur) + 20).toString(),
+      endCursor: (int.parse(endCur.isEmpty ? '0' : endCur) + 20).toString(),
       hasNextPage: nodes.length >= 20,
     );
   }
@@ -162,18 +177,19 @@ class Api extends BaseConnect {
     final res = await graphql(graphql_query.getComments(id, endCur));
     
     if (res.hasError) {
-      print('GetComments Error: ${res.statusCode} - ${res.bodyString}');
+      debugPrint('GetComments Error: ${res.statusCode} - ${res.bodyString}');
       throw Exception(res.statusText);
     }
-    
-    final data = res.body?['data'];
+
+    final Map<String, dynamic>? body = res.body;
+    final Map<String, dynamic>? data = body?['data'] as Map<String, dynamic>?;
     if (data == null) {
-      print('GetComments Data Null. Body: ${res.body}');
+      debugPrint('GetComments Data Null. Body: ${res.body}');
       throw Exception('Failed to get comments');
     }
-    
+
     // Strapi GraphQL 返回的是直接的数组
-    final commentsList = data['comments'] as List? ?? [];
+    final commentsList = data['comments'] as List<dynamic>? ?? [];
     final comments = commentsList
         .cast<Map<String, dynamic>>()
         .map(CommentModel.fromJson)
@@ -181,7 +197,7 @@ class Api extends BaseConnect {
     
     // 计算分页信息
     final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
-    final limit = 20;
+    const limit = 20;
     final hasNextPage = comments.length >= limit;
     final nextEndCur = hasNextPage ? (start + limit).toString() : null;
     
@@ -201,8 +217,8 @@ class Api extends BaseConnect {
       throw Exception('Discussion ID cannot be empty');
     }
     
-    print('Adding comment to discussion: $discussionId, author: $authorId');
-    
+    debugPrint('Adding comment to discussion: $discussionId, author: $authorId');
+
     return graphql(
       graphql_query.addDiscussionCommentMutation,
       variables: {
@@ -219,18 +235,20 @@ class Api extends BaseConnect {
       getFavorites(String username, String endCur) async {
     final res = await graphql(graphql_query.getFavorites(username, endCur));
     if (res.hasError) {
-      print('GetFavorites Error: ${res.bodyString}');
+      debugPrint('GetFavorites Error: ${res.bodyString}');
       return (items: <HDataModel>[], favoriteIds: <String, String>{});
     }
-    final list = res.body?['data']?['favorites'];
-    if (list is! List) {
+    final Map<String, dynamic>? body = res.body;
+    final data = body?['data'] as Map<String, dynamic>?;
+    final list = data?['favorites'] as List<dynamic>?;
+    if (list == null || list.isEmpty) {
       return (items: <HDataModel>[], favoriteIds: <String, String>{});
     }
 
     final items = <HDataModel>[];
     final favoriteIds = <String, String>{};
     for (final entry in list) {
-      if (entry is! Map) continue;
+      if (entry is! Map<String, dynamic>) continue;
       final favoriteId = entry['documentId']?.toString();
       final article = entry['article'];
       // Client-side filtering removed as per performance optimization
@@ -254,14 +272,15 @@ class Api extends BaseConnect {
   }) async {
     final res = await graphql(graphql_query.getFavoriteId(username, articleId));
     if (res.hasError) {
-      print('GetFavoriteId Error: ${res.bodyString}');
+      debugPrint('GetFavoriteId Error: ${res.bodyString}');
       return null;
     }
-    final list = res.body?['data']?['favorites'];
-    if (list is List && list.isNotEmpty) {
+    final Map<String, dynamic>? body = res.body;
+    final data = body?['data'] as Map<String, dynamic>?;
+    final list = data?['favorites'] as List<dynamic>?;
+    if (list != null && list.isNotEmpty) {
       final first = list.first;
-      if (first is Map) {
-        // Client-side filtering removed
+      if (first is Map<String, dynamic>) {
         return first['documentId']?.toString();
       }
     }
@@ -280,11 +299,13 @@ class Api extends BaseConnect {
       },
     );
     if (res.hasError) {
-      print('CreateFavorite Error: ${res.bodyString}');
+      debugPrint('CreateFavorite Error: ${res.bodyString}');
       return null;
     }
-    final data = res.body?['data']?['createFavorite'];
-    if (data is Map) {
+    final Map<String, dynamic>? body = res.body;
+    final dataMap = body?['data'] as Map<String, dynamic>?;
+    final data = dataMap?['createFavorite'] as Map<String, dynamic>?;
+    if (data != null) {
       return data['documentId']?.toString();
     }
     return null;
@@ -293,7 +314,7 @@ class Api extends BaseConnect {
   Future<bool> deleteFavorite(String favoriteId) async {
     final res = await graphql(graphql_query.deleteFavorite(favoriteId));
     if (res.hasError) {
-      print('DeleteFavorite Error: ${res.bodyString}');
+      debugPrint('DeleteFavorite Error: ${res.bodyString}');
       return false;
     }
     return true;
@@ -324,13 +345,15 @@ class Api extends BaseConnect {
   Future<String?> findAuthorIdByName(String name) async {
     final res = await graphql(graphql_query.getAuthorByName(name));
     if (res.hasError) {
-      print('FindAuthor Error: ${res.bodyString}');
+      debugPrint('FindAuthor Error: ${res.bodyString}');
       return null;
     }
-    final list = res.body?['data']?['authors'];
-    if (list is List && list.isNotEmpty) {
+    final Map<String, dynamic>? body = res.body;
+    final data = body?['data'] as Map<String, dynamic>?;
+    final list = data?['authors'] as List<dynamic>?;
+    if (list != null && list.isNotEmpty) {
       final first = list.first;
-      if (first is Map) {
+      if (first is Map<String, dynamic>) {
         return first['documentId'] as String?;
       }
     }
@@ -353,16 +376,18 @@ class Api extends BaseConnect {
       },
     );
     if (res.hasError) {
-      print('CreateAuthor Error: ${res.bodyString}');
+      debugPrint('CreateAuthor Error: ${res.bodyString}');
       if (res.bodyString?.contains('must be unique') == true) {
-        print('Slug conflict detected, retrying find by name');
+        debugPrint('Slug conflict detected, retrying find by name');
         await Future.delayed(const Duration(milliseconds: 300));
         return await findAuthorIdByName(name);
       }
       return null;
     }
-    final data = res.body?['data']?['createAuthor'];
-    if (data is Map) {
+    final Map<String, dynamic>? body = res.body;
+    final dataMap = body?['data'] as Map<String, dynamic>?;
+    final data = dataMap?['createAuthor'] as Map<String, dynamic>?;
+    if (data != null) {
       return data['documentId'] as String?;
     }
     return null;
@@ -382,7 +407,7 @@ class Api extends BaseConnect {
       },
     );
     if (res.hasError) {
-      print('UpdateAuthor Error: ${res.bodyString}');
+      debugPrint('UpdateAuthor Error: ${res.bodyString}');
     }
   }
 
@@ -401,8 +426,8 @@ class Api extends BaseConnect {
     existingId = await findAuthorIdByName(name);
     if (existingId != null && existingId.isNotEmpty) return existingId;
 
-    print('Warning: Author not found after retries, creating as fallback');
-    return createAuthor(name: name, userId: null, ensureUniqueSlug: true);
+    debugPrint('Warning: Author not found after retries, creating as fallback');
+    return createAuthor(name: name, ensureUniqueSlug: true);
   }
 
   Future<Response<Map<String, dynamic>>> deleteDiscussion(String id) =>
@@ -411,25 +436,28 @@ class Api extends BaseConnect {
   Future<PaginationModel<HDataModel>> getPinnedDiscussions(
       String? endCur) async {
     final res = await graphql(graphql_query.getPinnedDiscussions(endCur));
-    // Mapping search results to pinned format (just re-using search result structure)
+    final Map<String, dynamic> body = res.body!;
+    final data = body['data'] as Map<String, dynamic>;
     return PaginationModel.fromJson(
-      res.body!['data']['search'] as Map<String, dynamic>,
+      data['search'] as Map<String, dynamic>,
       HDataModel.fromPinnedJson,
     );
   }
 
   Future<AuthorModel> getSelfUserInfo(String login) async {
     final res = await graphql(graphql_query.getSelfUserInfo());
-    final data = res.body?['data']?['me'];
+    final Map<String, dynamic>? body = res.body;
+    final dataMap = body?['data'] as Map<String, dynamic>?;
+    final data = dataMap?['me'] as Map<String, dynamic>?;
     if (data == null) throw Exception('User not found');
-    return AuthorModel.fromJson(data as Map<String, dynamic>);
+    return AuthorModel.fromJson(data);
   }
 
   Future<AuthorModel> getUserInfo(String username) async {
     final res = await graphql(graphql_query.getUserInfo(username));
-    return AuthorModel.fromJson(
-      res.body!['data']['user'] as Map<String, dynamic>,
-    );
+    final Map<String, dynamic> body = res.body!;
+    final Map<String, dynamic> data = body['data'] as Map<String, dynamic>;
+    return AuthorModel.fromJson(data['user'] as Map<String, dynamic>);
   }
 
   Future<ReleaseModel?> getNewVersion(String login) async {
@@ -437,8 +465,8 @@ class Api extends BaseConnect {
     return null;
   }
 
-  Future<Report> getAllReports(String id) async {
+  Future<Report> getAllReports(String id) {
     // Mocked empty report list as backend doesn't support it yet
-    return {};
+    return Future.value(<int, Set<ReportCommentModel>>{});
   }
 }

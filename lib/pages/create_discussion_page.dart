@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:get/get.dart';
@@ -31,8 +30,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final normalized = input
         .toLowerCase()
         .trim()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp('[^a-z0-9]+'), '-')
+        .replaceAll(RegExp('-{2,}'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
     return normalized.isEmpty ? 'post' : normalized;
   }
@@ -51,11 +50,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final message = first['message']?.toString().toLowerCase() ?? '';
     if (message.contains('unique')) return true;
     final ext = first['extensions'];
-    if (ext is Map) {
-      final details = ext['error']?['details']?['errors'];
-      if (details is List) {
-        for (final item in details) {
-          if (item is Map) {
+    if (ext is Map<String, dynamic>) {
+      final error = ext['error'];
+      final details = error is Map ? (error as Map<String, dynamic>)['details'] : null;
+      final errList = details is Map ? (details as Map<String, dynamic>)['errors'] : null;
+      if (errList is List) {
+        for (final item in errList) {
+          if (item is Map<String, dynamic>) {
             final path = item['path'];
             final msg = item['message']?.toString().toLowerCase() ?? '';
             if (msg.contains('unique') ||
@@ -120,7 +121,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
 
       if (res.body?['errors'] != null) {
-        throw Exception(res.body!['errors'][0]['message']);
+        final errors = res.body!['errors'] as List<dynamic>;
+        final first = errors.isNotEmpty ? errors[0] : null;
+        final msg = first is Map ? first['message']?.toString() : null;
+        throw Exception(msg ?? 'Unknown error');
       }
 
       Get.back();
@@ -182,7 +186,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: quill.QuillEditor.basic(
@@ -290,7 +294,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                   ? Row(
                       children: [
                                     Expanded(
-                                      flex: 1,
                                       child: Container(
                             margin: const EdgeInsets.only(
                               top: 16,
