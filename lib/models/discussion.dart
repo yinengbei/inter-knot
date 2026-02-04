@@ -121,7 +121,7 @@ class DiscussionModel {
         ? AuthorModel.fromJson(authorData)
         : AuthorModel(
             login: 'unknown',
-            avatar: 'https://ik.tiwat.cn/uploads/default_avatar.png',
+            avatar: '',
             name: 'Unknown',
           );
 

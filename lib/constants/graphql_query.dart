@@ -205,3 +205,14 @@ const String updateAuthorMutation = r'''
     }
   }
 ''';
+
+const String updateAuthorAvatarMutation = r'''
+  mutation UpdateAuthorAvatar($documentId: ID!, $avatar: ID) {
+    updateAuthor(documentId: $documentId, data: { avatar: $avatar }) {
+      documentId
+      avatar {
+        url
+      }
+    }
+  }
+''';

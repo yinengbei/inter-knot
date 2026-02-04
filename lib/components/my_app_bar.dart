@@ -39,7 +39,31 @@ class MyAppBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Obx(() => Avatar(c.user()?.avatar)),
+                    Obx(() {
+                      final canUpload = c.isLogin.value;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Avatar(
+                            c.user()?.avatar,
+                            onTap: canUpload ? c.pickAndUploadAvatar : null,
+                          ),
+                          if (c.isUploadingAvatar.value)
+                            const Positioned.fill(
+                              child: ColoredBox(
+                                color: Color(0x66000000),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    }),
                     const SizedBox(width: 4),
                     Obx(() {
                       return Text(
