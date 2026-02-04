@@ -19,7 +19,7 @@ class ReportDiscussionComment extends StatelessWidget {
               title: Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: 'Discussions that have been reported: '.tr),
+                    const TextSpan(text: '被举报的讨论：'),
                     TextSpan(
                       text: '#$key',
                       recognizer: TapGestureRecognizer()
@@ -34,8 +34,7 @@ class ReportDiscussionComment extends StatelessWidget {
                     ),
                     const TextSpan(text: '\n'),
                     TextSpan(
-                      text: 'A total of @count reports'
-                          .trParams({'count': value.length.toString()}),
+                      text: '共 ${value.length} 次举报',
                     ),
                   ],
                 ),

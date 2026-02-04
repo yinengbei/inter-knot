@@ -34,7 +34,7 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
     final content = commentController.text.trim();
 
     if (content.isEmpty) {
-      Get.rawSnackbar(message: '评论内容不能为空'.tr);
+      Get.rawSnackbar(message: '评论内容不能为空');
       return;
     }
 
@@ -50,18 +50,19 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
 
     try {
       if (widget.discussionId.isEmpty) {
-        Get.rawSnackbar(message: '讨论 ID 无效'.tr);
+        Get.rawSnackbar(message: '讨论 ID 无效');
         return;
       }
-      
+
       final user = c.user.value;
       final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
       if (authorId == null || authorId.isEmpty) {
-        Get.rawSnackbar(message: '无法关联作者，请重新登录后再试'.tr);
+        Get.rawSnackbar(message: '无法关联作者，请重新登录后再试');
         return;
       }
-      
-      debugPrint('Submitting comment for discussion: ${widget.discussionId}, author: $authorId');
+
+      debugPrint(
+          'Submitting comment for discussion: ${widget.discussionId}, author: $authorId');
       final res = await api.addDiscussionComment(
         widget.discussionId,
         content,
@@ -82,10 +83,10 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
       }
 
       Get.back();
-      Get.rawSnackbar(message: '评论发布成功'.tr);
+      Get.rawSnackbar(message: '评论发布成功');
       widget.onCommentAdded();
     } catch (e) {
-      Get.rawSnackbar(message: '评论发布失败: $e'.tr);
+      Get.rawSnackbar(message: '评论发布失败: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -113,7 +114,7 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    '写评论'.tr,
+                    '写评论',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -130,9 +131,9 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
             Expanded(
               child: TextField(
                 controller: commentController,
-                decoration: InputDecoration(
-                  hintText: '输入你的评论...'.tr,
-                  border: const OutlineInputBorder(),
+                decoration: const InputDecoration(
+                  hintText: '输入你的评论...',
+                  border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
                 maxLines: null,
@@ -147,7 +148,7 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
               children: [
                 TextButton(
                   onPressed: isLoading ? null : () => Get.back(),
-                  child: Text('取消'.tr),
+                  child: const Text('取消'),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
@@ -158,7 +159,7 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text('发布'.tr),
+                      : const Text('发布'),
                 ),
               ],
             ),

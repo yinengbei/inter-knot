@@ -16,22 +16,20 @@ class HomePage extends StatelessWidget {
           Obx(
             () => ListTile(
               leading: const Icon(Icons.favorite),
-              title: Text('Like'.tr),
+              title: const Text('喜欢'),
               onTap: () => Get.to(() => const LikedPage()),
               subtitle: Text(
-                'A total of @count items'
-                    .trParams({'count': c.bookmarks.length.toString()}),
+                '共 ${c.bookmarks.length} 项',
               ),
             ),
           ),
           Obx(
             () => ListTile(
               leading: const Icon(Icons.history),
-              title: Text('History'.tr),
+              title: const Text('历史记录'),
               onTap: () => Get.to(() => const HistoryPage()),
               subtitle: Text(
-                'A total of @count items'
-                    .trParams({'count': c.history.length.toString()}),
+                '共 ${c.history.length} 项',
               ),
             ),
           ),
@@ -41,15 +39,15 @@ class HomePage extends StatelessWidget {
                 onTap: () async {
                   await c.setToken('');
                   c.isLogin(false);
-                  Get.rawSnackbar(message: '已退出登录状态'.tr);
+                  Get.rawSnackbar(message: '已退出登录');
                 },
-                title: Text('退出登录'.tr),
+                title: const Text('退出登录'),
                 leading: const Icon(Icons.logout),
               );
             } else {
               return ListTile(
                 onTap: () => Get.to(() => const LoginPage()),
-                title: Text('Login'.tr),
+                title: const Text('登录'),
                 leading: const Icon(Icons.login),
               );
             }

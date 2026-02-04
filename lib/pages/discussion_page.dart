@@ -185,12 +185,12 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                           ),
                                           if (widget.discussion.author.login ==
                                               owner)
-                                            MyChip('Founder of Inter-Knot'.tr),
+                                            const MyChip('绳网创始人'),
                                           if (collaborators.contains(
                                             widget.discussion.author.login,
                                           ))
-                                            MyChip(
-                                              'Inter-Knot collaborator'.tr,
+                                            const MyChip(
+                                              '绳网协作者',
                                             ),
                                         ],
                                       ),
@@ -329,25 +329,19 @@ class _RightBoxState extends State<RightBox> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Published on: '.tr +
-                    discussion.createdAt.toLocal().toString().split('.').first,
+                '发布时间：${discussion.createdAt.toLocal().toString().split('.').first}',
               ),
               if (discussion.lastEditedAt != null)
                 Text(
-                  'Last edited on: '.tr +
-                      discussion.lastEditedAt!
-                          .toLocal()
-                          .toString()
-                          .split('.')
-                          .first,
+                  '更新时间：${discussion.lastEditedAt!.toLocal().toString().split('.').first}',
                 ),
               const SizedBox(height: 16),
               SelectionArea(
                 child: MarkdownBody(
                   data: discussion.rawBodyText,
                   selectable: true,
-                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                      .copyWith(
+                  styleSheet:
+                      MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
                     p: const TextStyle(fontSize: 16),
                     blockSpacing: 16,
                   ),
@@ -397,9 +391,9 @@ class _RightBoxState extends State<RightBox> {
                       children: [
                         const Icon(Icons.add_comment_outlined),
                         const SizedBox(width: 8),
-                        Text(
-                          'Write a review'.tr,
-                          style: const TextStyle(fontSize: 16),
+                        const Text(
+                          '写评论',
+                          style: TextStyle(fontSize: 16),
                         ),
                       ],
                     ),
@@ -409,7 +403,7 @@ class _RightBoxState extends State<RightBox> {
               if (canReport(discussion, hData.isPin)) ...[
                 const SizedBox(width: 8),
                 Tooltip(
-                  message: 'Report'.tr,
+                  message: '举报',
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -427,8 +421,8 @@ class _RightBoxState extends State<RightBox> {
                         );
                         copyText(
                           '违规讨论：#${discussion.id}\n举报原因：',
-                          title: 'Report template copied'.tr,
-                          msg: 'Jump to the report page after 3 seconds'.tr,
+                          title: '举报模板已复制',
+                          msg: '3 秒后跳转到举报页',
                         );
                       },
                       child: const Icon(Icons.report_outlined),
@@ -438,11 +432,10 @@ class _RightBoxState extends State<RightBox> {
               ],
               const SizedBox(width: 8),
               Obx(() {
-                final isLiked = c.bookmarks
-                    .map((e) => e.id)
-                    .contains(discussion.id);
+                final isLiked =
+                    c.bookmarks.map((e) => e.id).contains(discussion.id);
                 return Tooltip(
-                  message: isLiked ? 'Dislike'.tr : 'Like'.tr,
+                  message: isLiked ? '不喜欢' : '喜欢',
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(

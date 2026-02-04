@@ -33,13 +33,12 @@ class _DiscussionCardState extends State<DiscussionCard>
     super.build(context);
     return Obx(() {
       return Badge(
-        isLabelVisible: !c.history
-                .map((e) => e.id)
-                .contains(widget.discussion.id) ||
-            c.history
-                    .firstWhere((e) => e.id == widget.discussion.id)
-                    .updatedAt !=
-                widget.hData.updatedAt,
+        isLabelVisible:
+            !c.history.map((e) => e.id).contains(widget.discussion.id) ||
+                c.history
+                        .firstWhere((e) => e.id == widget.discussion.id)
+                        .updatedAt !=
+                    widget.hData.updatedAt,
         child: Card(
           clipBehavior: Clip.antiAlias,
           elevation: elevation,
@@ -56,15 +55,10 @@ class _DiscussionCardState extends State<DiscussionCard>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'This discussion is suspected of violating regulations'
-                              .tr,
+                          '此讨论涉嫌违规',
                         ),
                         Text(
-                          'This discussion was reported by @count people'
-                              .trParams({
-                            'count': c.report[widget.discussion.id]!.length
-                                .toString(),
-                          }),
+                          '这篇讨论被 ${c.report[widget.discussion.id]!.length} 人举报',
                         ),
                       ],
                     ),
@@ -103,7 +97,7 @@ class _DiscussionCardState extends State<DiscussionCard>
                           top: 8,
                           right: 12,
                           child: Text(
-                            'Top'.tr,
+                            '置顶',
                             style: const TextStyle(color: Colors.white),
                           ),
                         ),

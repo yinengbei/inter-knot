@@ -43,7 +43,7 @@ class MyAppBar extends StatelessWidget {
                     const SizedBox(width: 4),
                     Obx(() {
                       return Text(
-                        c.user()?.name ?? 'Not logged in'.tr,
+                        c.user()?.name ?? '未登录',
                         style: const TextStyle(
                           fontSize: 18,
                           height: 1,
@@ -74,7 +74,7 @@ class MyAppBar extends StatelessWidget {
                     Obx(() {
                       return MyTab(
                         first: true,
-                        text: 'Notifications'.tr,
+                        text: '推送',
                         trailing:
                             c.curPage() == 0 ? const Icon(Icons.refresh) : null,
                         onTap: () {
@@ -84,7 +84,7 @@ class MyAppBar extends StatelessWidget {
                       );
                     }),
                     MyTab(
-                      text: 'Home'.tr,
+                      text: '我的',
                       onTap: () => c.animateToPage(1),
                     ),
                   ],

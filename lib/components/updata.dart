@@ -38,7 +38,7 @@ class _UpdataState extends State<Updata> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('New version available'.tr),
+      title: const Text('有新版本可用'),
       content: Column(
         children: [
           Expanded(
@@ -47,39 +47,36 @@ class _UpdataState extends State<Updata> {
                 children: [
                   ListTile(
                     onTap: () => copyText(widget.curFullVer),
-                    title: Text('Current version'.tr),
+                    title: const Text('当前版本'),
                     subtitle: Text(widget.curFullVer),
                   ),
                   ListTile(
                     onTap: () => copyText(widget.newFullVer),
-                    title: Text('Latest version'.tr),
+                    title: const Text('最新版本'),
                     subtitle: Text(widget.newFullVer),
                   ),
                   ListTile(
                     onTap: () {},
-                    title: Text('Update content'.tr),
+                    title: const Text('更新内容'),
                     subtitle: widget.descriptionHTML.trim().isEmpty
-                        ? Text('Empty'.tr)
+                        ? const Text('空')
                         : HtmlWidget(widget.descriptionHTML),
                   ),
                   const Divider(),
                   for (final item in widget.release.releaseAssets)
                     ListTile(
-                      title: Text(item.name.tr),
+                      title: Text(item.name),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Last edited on: '.tr +
-                                item.updatedAt.toLocal().toString(),
+                            '更新时间：${item.updatedAt.toLocal()}',
                           ),
                           Text(
-                            'Size: @size bytes'
-                                .trParams({'size': item.size.toString()}),
+                            '大小：${item.size} 字节',
                           ),
                           Text(
-                            'Download count: '.tr +
-                                item.downloadCount.toString(),
+                            '下载次数：${item.downloadCount}',
                           ),
                         ],
                       ),
@@ -90,7 +87,7 @@ class _UpdataState extends State<Updata> {
               ),
             ),
           ),
-          ListTile(title: Text('Accelerator'.tr)),
+          const ListTile(title: Text('加速源')),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Obx(
@@ -129,7 +126,7 @@ class _UpdataState extends State<Updata> {
         if (!widget.mustUpdate)
           TextButton(
             onPressed: () => Get.back(),
-            child: Text('OK'.tr),
+            child: const Text('确定'),
           ),
       ],
     );

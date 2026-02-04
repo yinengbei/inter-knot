@@ -17,11 +17,11 @@ class Comment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allComments = discussion.comments.map((e) => e.nodes).flat.toList();
-    
+
     if (allComments.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     return SizedBox(
       width: double.infinity,
       child: ListView.builder(
@@ -37,72 +37,70 @@ class Comment extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('No more comments'.tr),
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('没有更多评论了'),
             );
           }
-          
+
           final comment = allComments[index];
           return ListTile(
-                titleAlignment: ListTileTitleAlignment.top,
-                contentPadding: EdgeInsets.zero,
-                horizontalTitleGap: 8,
-                minVerticalPadding: 0,
-                leading: ClipOval(
+            titleAlignment: ListTileTitleAlignment.top,
+            contentPadding: EdgeInsets.zero,
+            horizontalTitleGap: 8,
+            minVerticalPadding: 0,
+            leading: ClipOval(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(50),
+                onTap: () => launchUrlString(comment.url),
+                child: Avatar(comment.author.avatar),
+              ),
+            ),
+            title: Row(
+              children: [
+                Flexible(
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(50),
                     onTap: () => launchUrlString(comment.url),
-                    child: Avatar(comment.author.avatar),
+                    child: Text(
+                      comment.author.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
-                title: Row(
-                  children: [
-                    Flexible(
-                      child: InkWell(
-                        onTap: () => launchUrlString(comment.url),
-                        child: Text(
-                          comment.author.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          if (comment.author.login == discussion.author.login)
-                            MyChip('landlord'.tr),
-                          if (comment.author.login == owner)
-                            MyChip('Founder of Inter-Knot'.tr),
-                          if (collaborators.contains(comment.author.login))
-                            MyChip('Inter-Knot collaborator'.tr),
-                        ],
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (comment.author.login == discussion.author.login)
+                        const MyChip('楼主'),
+                      if (comment.author.login == owner) const MyChip('绳网创始人'),
+                      if (collaborators.contains(comment.author.login))
+                        const MyChip('绳网协作者'),
+                    ],
+                  ),
                 ),
-                trailing: MyChip('F${index + 1}'),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Published on: '.tr +
-                          comment.createdAt.toLocal().toString().split('.').first,
-                    ),
-                    const SizedBox(height: 8),
-                    SelectionArea(
-                      child: HtmlWidget(
-                        comment.bodyHTML,
-                        textStyle: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    const Divider(),
-                    Replies(comment: comment, discussion: discussion),
-                ],
-              ),
+              ],
+            ),
+            trailing: MyChip('F${index + 1}'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '发布时间：${comment.createdAt.toLocal().toString().split('.').first}',
+                ),
+                const SizedBox(height: 8),
+                SelectionArea(
+                  child: HtmlWidget(
+                    comment.bodyHTML,
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                const Divider(),
+                Replies(comment: comment, discussion: discussion),
+              ],
+            ),
           );
         },
       ),

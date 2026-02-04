@@ -17,11 +17,11 @@ class FeedbackBtn extends StatelessWidget {
         Future.delayed(3.s).then((_) => launchUrlString(issuesLink));
         await copyText(
           error,
-          title: 'The error message has been copied.'.tr,
-          msg: 'The GitHub Issues page automatically opens after 3 seconds'.tr,
+          title: '错误提示已复制',
+          msg: '3 秒后自动打开 GitHub Issues 页面',
         );
       },
-      child: Text('Feedback'.tr),
+      child: const Text('反馈'),
     );
   }
 }

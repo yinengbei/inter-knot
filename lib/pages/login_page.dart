@@ -52,14 +52,15 @@ class _LoginPageState extends State<LoginPage> {
           : await BaseConnect.authApi.login(email, password);
 
       await box.write('access_token', res.token);
-      
+
       // Update Controller state
       final c = Get.find<Controller>();
       c.user(res.user);
       await c.ensureAuthorForUser(res.user);
       c.isLogin(true);
-      
+
       Get.back();
+      Get.rawSnackbar(message: '登录成功：欢迎回来，绳匠！');
     } catch (e) {
       logger.e('Login failed', error: e);
       setState(() {
@@ -77,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(isRegister ? '注册'.tr : '登录'.tr)),
+      appBar: AppBar(title: Text(isRegister ? '注册' : '登录')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -101,30 +102,30 @@ class _LoginPageState extends State<LoginPage> {
                     if (isRegister) ...[
                       TextField(
                         controller: usernameController,
-                        decoration: InputDecoration(
-                          labelText: '用户名'.tr,
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.person),
+                        decoration: const InputDecoration(
+                          labelText: '用户名',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
                     TextField(
                       controller: emailController,
-                      decoration: InputDecoration(
-                        labelText: '邮箱'.tr,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.email),
+                      decoration: const InputDecoration(
+                        labelText: '邮箱',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email),
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: passwordController,
-                      decoration: InputDecoration(
-                        labelText: '密码'.tr,
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.lock),
+                      decoration: const InputDecoration(
+                        labelText: '密码',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock),
                       ),
                       obscureText: true,
                     ),
@@ -136,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: isLoading ? null : _submit,
                         child: isLoading
                             ? const CircularProgressIndicator()
-                            : Text(isRegister ? '注册'.tr : 'Login'.tr),
+                            : Text(isRegister ? '注册' : '登录'),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -148,9 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                         });
                       },
                       child: Text(
-                        isRegister
-                            ? '登录'.tr
-                            : '注册账号'.tr,
+                        isRegister ? '登录' : '注册账号',
                       ),
                     ),
                   ],

@@ -18,7 +18,7 @@ class _LikedPageState extends State<LikedPage>
     super.build(context);
     return Scaffold(
       backgroundColor: const Color(0xff121212),
-      appBar: AppBar(title: Text('Like'.tr)),
+      appBar: AppBar(title: const Text('喜欢')),
       body: Obx(() => DiscussionGrid(list: c.bookmarks(), hasNextPage: false)),
     );
   }

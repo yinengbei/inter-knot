@@ -7,7 +7,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/my_app_bar.dart';
 import 'package:inter_knot/controllers/data.dart';
-import 'package:inter_knot/l10n.dart';
 import 'package:inter_knot/pages/home_page.dart';
 import 'package:inter_knot/pages/search_page.dart';
 
@@ -27,7 +26,6 @@ class MyApp extends StatelessWidget {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     return GetMaterialApp(
       title: 'Inter-Knot',
-      onGenerateTitle: (context) => 'Inter-Knot'.tr,
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ZhCn',
@@ -47,9 +45,6 @@ class MyApp extends StatelessWidget {
         Locale('zh', 'TC'),
         Locale('en'),
       ],
-      translations: Messages(),
-      locale: Get.deviceLocale,
-      fallbackLocale: const Locale('en'),
       home: const MyHomePage(),
       debugShowCheckedModeBanner: false,
     );

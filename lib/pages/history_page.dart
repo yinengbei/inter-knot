@@ -17,7 +17,7 @@ class _HistoryPageState extends State<HistoryPage>
     super.build(context);
     return Scaffold(
       backgroundColor: const Color(0xff121212),
-      appBar: AppBar(title: Text('History'.tr)),
+      appBar: AppBar(title: const Text('历史记录')),
       body: Obx(() => DiscussionGrid(list: c.history(), hasNextPage: false)),
     );
   }

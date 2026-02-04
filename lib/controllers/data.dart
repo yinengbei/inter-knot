@@ -147,13 +147,13 @@ class Controller extends GetxController {
 
   Future<void> toggleFavorite(HDataModel hData) async {
     if (isLogin.isFalse) {
-      Get.rawSnackbar(message: '请先登录'.tr);
+      Get.rawSnackbar(message: '请先登录');
       return;
     }
     final userId = user.value?.userId;
     final username = user.value?.login ?? '';
     if (userId == null || userId.isEmpty || username.isEmpty) {
-      Get.rawSnackbar(message: '用户信息获取失败'.tr);
+      Get.rawSnackbar(message: '用户信息获取失败');
       return;
     }
 
@@ -178,7 +178,7 @@ class Controller extends GetxController {
         favoriteIds.remove(articleId);
         bookmarks.removeWhere((e) => e.id == articleId);
       } else {
-        Get.rawSnackbar(message: '取消收藏失败'.tr);
+        Get.rawSnackbar(message: '取消收藏失败');
       }
     } else {
       final newId = await api.createFavorite(
@@ -189,7 +189,7 @@ class Controller extends GetxController {
         favoriteIds[articleId] = newId;
         bookmarks({hData, ...bookmarks});
       } else {
-        Get.rawSnackbar(message: '收藏失败'.tr);
+        Get.rawSnackbar(message: '收藏失败');
       }
     }
   }

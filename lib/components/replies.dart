@@ -53,13 +53,13 @@ class Replies extends StatelessWidget {
                   child: Row(
                     children: [
                       if (reply.author.login == discussion.author.login)
-                        MyChip('landlord'.tr),
+                        const MyChip('楼主'),
                       if (reply.author.login == comment.author.login)
-                        MyChip('layer master'.tr),
+                        const MyChip('层主'),
                       if (reply.author.login == owner)
-                        MyChip('Founder of Inter-Knot'.tr),
+                        const MyChip('绳网创始人'),
                       if (collaborators.contains(reply.author.login))
-                        MyChip('Inter-Knot collaborator'.tr),
+                        const MyChip('绳网协作者'),
                     ],
                   ),
                 ),
@@ -69,7 +69,7 @@ class Replies extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Published on: '.tr + reply.createdAt.toLocal().toString(),
+                  '发布时间：${reply.createdAt.toLocal()}',
                 ),
                 const SizedBox(height: 8),
                 SelectionArea(

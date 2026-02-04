@@ -21,7 +21,7 @@ class DiscussionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (list.isEmpty) return Center(child: Text('Empty'.tr));
+    if (list.isEmpty) return const Center(child: Text('空'));
     return LayoutBuilder(
       builder: (context, con) {
         return WaterfallFlow.builder(
@@ -46,10 +46,10 @@ class DiscussionGrid extends StatelessWidget {
                   ),
                 );
               }
-              return Center(
+              return const Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text('No more data'.tr),
+                  padding: EdgeInsets.all(8),
+                  child: Text('没有更多数据了'),
                 ),
               );
             }
@@ -65,7 +65,7 @@ class DiscussionGrid extends StatelessWidget {
                       showGeneralDialog(
                         context: context,
                         barrierDismissible: true,
-                        barrierLabel: 'Close'.tr,
+                        barrierLabel: '取消',
                         pageBuilder: (context, animation, secondaryAnimation) {
                           return DiscussionPage(
                             discussion: snaphost.data!,
@@ -119,7 +119,7 @@ class DiscussionGrid extends StatelessWidget {
                         aspectRatio: 5 / 6,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Center(child: Text('Discussion deleted'.tr)),
+                          child: Center(child: Text('讨论已删除')),
                         ),
                       ),
                     ),
