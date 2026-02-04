@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:inter_knot/api/api.dart'; // Import Api
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/helpers/box.dart';
@@ -39,6 +40,7 @@ class Controller extends GetxController {
   final isLogin = false.obs;
   final user = Rx<AuthorModel?>(null); // Author -> AuthorModel
   final authorId = RxnString();
+  final isUploadingAvatar = false.obs;
 
   final report = <String, Set<ReportCommentModel>>{}.obs;
 
@@ -241,6 +243,10 @@ class Controller extends GetxController {
 
   Future<String?> ensureAuthorForUser(AuthorModel? u) async {
     if (u == null) return null;
+    if (u.authorId != null && u.authorId!.isNotEmpty) {
+      authorId.value = u.authorId;
+      return u.authorId;
+    }
     final name = (u.name.isNotEmpty ? u.name : u.login).trim();
     if (name.isEmpty) return null;
     final id = await api.ensureAuthorId(
@@ -251,6 +257,51 @@ class Controller extends GetxController {
       authorId.value = id;
     }
     return id;
+  }
+
+  Future<void> pickAndUploadAvatar() async {
+    if (isLogin.isFalse) {
+      Get.rawSnackbar(message: '请先登录'.tr);
+      return;
+    }
+    if (isUploadingAvatar.value) return;
+
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (file == null) return;
+
+    isUploadingAvatar(true);
+    try {
+      final curUser = user.value;
+      final targetAuthorId =
+          authorId.value ?? curUser?.authorId ?? await ensureAuthorForUser(curUser);
+      if (targetAuthorId == null || targetAuthorId.isEmpty) {
+        throw Exception('未找到作者信息');
+      }
+
+      final bytes = await file.readAsBytes();
+      await api.uploadAvatar(
+        authorId: targetAuthorId,
+        bytes: bytes,
+        filename: file.name,
+      );
+
+      final refreshedUser = await api.getSelfUserInfo('');
+      user(refreshedUser);
+      if (refreshedUser.authorId != null && refreshedUser.authorId!.isNotEmpty) {
+        authorId.value = refreshedUser.authorId;
+      }
+      Get.rawSnackbar(message: '头像已更新'.tr);
+    } catch (e) {
+      Get.rawSnackbar(message: '头像上传失败: $e');
+    } finally {
+      isUploadingAvatar(false);
+    }
   }
 }
 

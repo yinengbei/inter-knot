@@ -4,6 +4,7 @@ import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/helpers/logger.dart';
+import 'package:inter_knot/models/author.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,8 +56,12 @@ class _LoginPageState extends State<LoginPage> {
       
       // Update Controller state
       final c = Get.find<Controller>();
-      c.user(res.user);
-      await c.ensureAuthorForUser(res.user);
+      AuthorModel currentUser = res.user;
+      try {
+        currentUser = await Get.find<Api>().getSelfUserInfo('');
+      } catch (_) {}
+      c.user(currentUser);
+      await c.ensureAuthorForUser(currentUser);
       c.isLogin(true);
       
       Get.back();

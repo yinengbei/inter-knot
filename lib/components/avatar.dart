@@ -2,22 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 
 class Avatar extends StatelessWidget {
-  const Avatar(this.src, {super.key, this.size = 40});
+  const Avatar(
+    this.src, {
+    super.key,
+    this.size = 40,
+    this.onTap,
+  });
 
   final String? src;
   final double size;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: src == null
+    final hasSrc = src != null && src!.trim().isNotEmpty;
+    final avatar = ClipOval(
+      child: !hasSrc
           ? Assets.images.profilePhoto.image(
               height: size,
               width: size,
               fit: BoxFit.cover,
             )
           : Image.network(
-              src!,
+              src!.trim(),
               width: size,
               height: size,
               fit: BoxFit.cover,
@@ -40,6 +47,12 @@ class Avatar extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
+    );
+    if (onTap == null) return avatar;
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: avatar,
     );
   }
 }

@@ -268,7 +268,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                         ),
                         borderRadius: BorderRadius.circular(100),
                       ),
-                      child: Avatar(user?.avatar ?? ''),
+                      child: Avatar(
+                        user?.avatar,
+                        onTap: c.isLogin.value ? c.pickAndUploadAvatar : null,
+                      ),
                     );
                   }),
                   const SizedBox(width: 8),

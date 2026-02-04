@@ -65,7 +65,21 @@ String search(String query, String? endCur, [int length = 20]) => '''
 String getUserInfo(String username) =>
     '{ user(username: "$username") { username avatarUrl createdAt } }'; // Simplified
 
-String getSelfUserInfo() => '{ me { id username email } }';
+String getSelfUserInfo() => '''
+  query {
+    me {
+      id
+      username
+      email
+      author {
+        documentId
+        avatar {
+          url
+        }
+      }
+    }
+  }
+''';
 
 // Pinned discussions not implemented in backend, falling back to search or empty
 String getPinnedDiscussions(String? endCur) =>
@@ -202,6 +216,17 @@ const String updateAuthorMutation = r'''
   mutation UpdateAuthor($documentId: ID!, $data: AuthorInput!) {
     updateAuthor(documentId: $documentId, data: $data) {
       documentId
+    }
+  }
+''';
+
+const String updateAuthorAvatarMutation = r'''
+  mutation UpdateAuthorAvatar($documentId: ID!, $avatar: ID) {
+    updateAuthor(documentId: $documentId, data: { avatar: $avatar }) {
+      documentId
+      avatar {
+        url
+      }
     }
   }
 ''';

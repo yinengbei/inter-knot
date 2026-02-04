@@ -118,6 +118,15 @@ class BaseConnect extends GetConnect {
 }
 
 class Api extends BaseConnect {
+  String _contentTypeFromFilename(String filename) {
+    final ext = filename.toLowerCase();
+    if (ext.endsWith('.png')) return 'image/png';
+    if (ext.endsWith('.webp')) return 'image/webp';
+    if (ext.endsWith('.gif')) return 'image/gif';
+    if (ext.endsWith('.bmp')) return 'image/bmp';
+    return 'image/jpeg';
+  }
+
   String _slugify(String input, {bool ensureUnique = false}) {
     final normalized = input
         .toLowerCase()
@@ -451,6 +460,57 @@ class Api extends BaseConnect {
     final data = dataMap?['me'] as Map<String, dynamic>?;
     if (data == null) throw Exception('User not found');
     return AuthorModel.fromJson(data);
+  }
+
+  Future<String?> uploadAvatar({
+    required String authorId,
+    required List<int> bytes,
+    required String filename,
+    String? contentType,
+  }) async {
+    final uploadRes = await post(
+      '/api/upload',
+      FormData({
+        'files': MultipartFile(
+          bytes,
+          filename: filename,
+          contentType: contentType ?? _contentTypeFromFilename(filename),
+        ),
+      }),
+      contentType: 'multipart/form-data',
+    );
+    if (uploadRes.hasError) {
+      throw Exception(uploadRes.bodyString ?? uploadRes.statusText ?? 'Upload failed');
+    }
+
+    final uploadBody = uploadRes.body;
+    if (uploadBody is! List || uploadBody.isEmpty || uploadBody.first is! Map) {
+      throw Exception('Unexpected upload response');
+    }
+    final uploaded = uploadBody.first as Map;
+    final rawAvatarId = uploaded['id'] ?? uploaded['documentId'];
+    if (rawAvatarId == null) {
+      throw Exception('Upload response missing file id');
+    }
+
+    final updateRes = await graphql(
+      graphql_query.updateAuthorAvatarMutation,
+      variables: {
+        'documentId': authorId,
+        'avatar': _coerceId(rawAvatarId.toString()),
+      },
+    );
+    if (updateRes.hasError) {
+      throw Exception(updateRes.bodyString ?? updateRes.statusText ?? 'Failed to bind avatar');
+    }
+
+    final updateBody = updateRes.body;
+    final dataMap = updateBody?['data'] as Map<String, dynamic>?;
+    final authorMap = dataMap?['updateAuthor'] as Map<String, dynamic>?;
+    final avatarMap = authorMap?['avatar'] as Map<String, dynamic>?;
+    final url = avatarMap?['url'] as String?;
+    if (url == null || url.isEmpty) return null;
+    return url.startsWith('http') ? url : 'https://ik.tiwat.cn$url';
   }
 
   Future<AuthorModel> getUserInfo(String username) async {
