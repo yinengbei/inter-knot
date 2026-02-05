@@ -51,6 +51,11 @@ class Controller extends GetxController {
   // Api instance
   final api = Get.find<Api>();
 
+  String _withCacheBuster(String url) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return url.contains('?') ? '$url&v=$ts' : '$url?v=$ts';
+  }
+
   bool canVisit(DiscussionModel discussion, bool isPin) =>
       report[discussion.id] == null ||
       [owner, ...collaborators].contains(discussion.author.login) ||
@@ -292,7 +297,7 @@ class Controller extends GetxController {
       );
       final current = user.value;
       if (current != null && avatarUrl != null && avatarUrl.isNotEmpty) {
-        current.avatar = avatarUrl;
+        current.avatar = _withCacheBuster(avatarUrl);
         user.refresh();
       }
       Get.rawSnackbar(message: '头像已更新'.tr);

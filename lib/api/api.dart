@@ -493,7 +493,11 @@ class Api extends BaseConnect {
     // /api/users/me returns the user directly
     final res = await get(
       '/api/users/me',
-      query: {'populate': '*'},
+      query: {
+        'populate': '*',
+        // Ensure author.avatar is populated (Strapi doesn't deep-populate with '*')
+        'populate[author][populate]': 'avatar',
+      },
     );
 
     // Note: /api/users/me often returns the user object directly, or wrapped in some versions.
@@ -510,6 +514,8 @@ class Api extends BaseConnect {
       query: {
         'filters[username][\$eq]': username,
         'populate': '*',
+        // Ensure author.avatar is populated (Strapi doesn't deep-populate with '*')
+        'populate[author][populate]': 'avatar',
       },
     );
 
