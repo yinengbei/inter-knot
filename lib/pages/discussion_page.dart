@@ -342,7 +342,11 @@ class _RightBoxState extends State<RightBox> {
                   selectable: true,
                   styleSheet:
                       MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                    p: const TextStyle(fontSize: 16),
+                    p: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 16,
+                          fontFamily: 'ZhCn',
+                          fontFamilyFallback: const ['ZhCn'],
+                        ),
                     blockSpacing: 16,
                   ),
                   onTapLink: (text, href, title) {
