@@ -6,7 +6,7 @@
 
 | <div style="width:100px">任务</div> | <div style="width:100px">负责人</div> | <div style="width:100px">进度</div> | 备注 |
 |:----------:|:------:|:--------:|:--------|
-| 重构 api 为 REST   | yiyi | 正在开发 | [头像上传测试不通过](https://github.com/yinengbei/inter-knot/issues/17) |
+| 重构 api 为 REST   | yiyi | [等待验收PR：feat(用户头像): 优化头像加载机制并添加缓存功能](https://github.com/yinengbei/inter-knot/pull/18) |  |
 | 创建讨论   | all | 待后续完善  | 希望能像GitHub那样，可通过拖动、复制等上传图片，上传图片后， <br> 在光标位置提示上传情况，上传完毕业后自动，自动构建语法，并调用图片链接。 <br> 除非指定图片，否则正文中的第一个图片就是封面  <br>  有基础的格式工具栏(这个或许有开源项目参考)|
 | 评论讨论   | yiyi | 已实现     | 后续可添加图片上传以及markdown支持 |
 | 回复评论   | 负责人 | 进度     | |
