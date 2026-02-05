@@ -20,7 +20,7 @@ class AuthorModel {
     this.authorId,
   }) : name = name ?? login;
 
-  static String? _extractAvatarUrl(dynamic avatarData) {
+  static String? extractAvatarUrl(dynamic avatarData) {
     if (avatarData is! Map) return null;
 
     final directUrl = avatarData['url'] as String?;
@@ -58,7 +58,7 @@ class AuthorModel {
     final authorData = json['author'];
     final authorMap = authorData is Map<String, dynamic> ? authorData : null;
     final avatarData = json['avatar'] ?? authorMap?['avatar'];
-    String? avatarUrl = _extractAvatarUrl(avatarData);
+    String? avatarUrl = extractAvatarUrl(avatarData);
 
     if (avatarUrl != null && !avatarUrl.startsWith('http')) {
       avatarUrl = '$_baseUrl$avatarUrl';

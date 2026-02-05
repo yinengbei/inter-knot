@@ -493,18 +493,25 @@ class Api extends BaseConnect {
     // /api/users/me returns the user directly
     final res = await get(
       '/api/users/me',
-      query: {
-        'populate': '*',
-        // Ensure author.avatar is populated (Strapi doesn't deep-populate with '*')
-        'populate[author][populate]': 'avatar',
-      },
+      query: {'populate': '*'},
     );
 
     // Note: /api/users/me often returns the user object directly, or wrapped in some versions.
     // unwrapData handles checking for 'data' key.
 
     final data = unwrapData<Map<String, dynamic>>(res);
-    return AuthorModel.fromJson(data);
+    final user = AuthorModel.fromJson(data);
+    if (user.avatar.isEmpty && user.authorId != null && user.authorId!.isNotEmpty) {
+      try {
+        final url = await getAuthorAvatarUrl(user.authorId!);
+        if (url != null && url.isNotEmpty) {
+          user.avatar = url;
+        }
+      } catch (_) {
+        // Ignore avatar fetch errors; user info is still valid.
+      }
+    }
+    return user;
   }
 
   Future<AuthorModel> getUserInfo(String username) async {
@@ -514,15 +521,37 @@ class Api extends BaseConnect {
       query: {
         'filters[username][\$eq]': username,
         'populate': '*',
-        // Ensure author.avatar is populated (Strapi doesn't deep-populate with '*')
-        'populate[author][populate]': 'avatar',
       },
     );
 
     final list = unwrapData<List<dynamic>>(res);
     if (list.isEmpty) throw ApiException('User not found');
 
-    return AuthorModel.fromJson(list.first as Map<String, dynamic>);
+    final user = AuthorModel.fromJson(list.first as Map<String, dynamic>);
+    if (user.avatar.isEmpty && user.authorId != null && user.authorId!.isNotEmpty) {
+      try {
+        final url = await getAuthorAvatarUrl(user.authorId!);
+        if (url != null && url.isNotEmpty) {
+          user.avatar = url;
+        }
+      } catch (_) {
+        // Ignore avatar fetch errors; user info is still valid.
+      }
+    }
+    return user;
+  }
+
+  Future<String?> getAuthorAvatarUrl(String authorId) async {
+    final res = await get(
+      '/api/authors/$authorId',
+      query: {'populate': 'avatar'},
+    );
+    final authorData = unwrapData<Map<String, dynamic>>(res);
+    String? url = AuthorModel.extractAvatarUrl(authorData['avatar']);
+    if (url != null && !url.startsWith('http')) {
+      url = '${ApiConfig.baseUrl}$url';
+    }
+    return url;
   }
 
   Future<ReleaseModel?> getNewVersion(String login) async {
