@@ -56,6 +56,28 @@ class Controller extends GetxController {
     return url.contains('?') ? '$url&v=$ts' : '$url?v=$ts';
   }
 
+  Future<void> updateUserAvatarFromDiscussionsCache() async {
+    final login = user.value?.login;
+    if (login == null || login.isEmpty) return;
+    if (user.value?.avatar.isNotEmpty == true) return;
+
+    for (final future in HDataModel.discussionsCache.values) {
+      try {
+        final discussion = await future;
+        if (discussion != null && discussion.author.login == login) {
+          final avatar = discussion.author.avatar;
+          if (avatar.isNotEmpty) {
+            user.value?.avatar = avatar;
+            user.refresh();
+            return;
+          }
+        }
+      } catch (_) {
+        // Ignore cache errors; continue scanning.
+      }
+    }
+  }
+
   Future<void> _refreshAvatarCaches(String newUrl) async {
     final login = user.value?.login;
     if (login == null || login.isEmpty) return;
@@ -75,6 +97,28 @@ class Controller extends GetxController {
     searchResult.refresh();
     bookmarks.refresh();
     history.refresh();
+  }
+
+  Future<void> refreshSelfUserInfo({bool forceAvatarFetch = true}) async {
+    try {
+      final u = await api.getSelfUserInfo('');
+      user(u);
+      await ensureAuthorForUser(u);
+
+      if (forceAvatarFetch) {
+        final id = authorId.value ?? u.authorId;
+        if (id != null && id.isNotEmpty) {
+          final url = await api.getAuthorAvatarUrl(id);
+          if (url != null && url.isNotEmpty) {
+            u.avatar = _withCacheBuster(url);
+          }
+        }
+      }
+      user.refresh();
+      await updateUserAvatarFromDiscussionsCache();
+    } catch (e) {
+      logger.e('Failed to refresh self user info', error: e);
+    }
   }
 
   bool canVisit(DiscussionModel discussion, bool isPin) =>
@@ -106,9 +150,7 @@ class Controller extends GetxController {
     if (getToken().isNotEmpty) {
        isLogin(true);
        try {
-         final u = await api.getSelfUserInfo('');
-         user(u);
-         await ensureAuthorForUser(u);
+         await refreshSelfUserInfo();
          await refreshFavorites();
        } catch (e) {
          // Keep login state; token will be cleared on 401 by BaseConnect
@@ -121,9 +163,7 @@ class Controller extends GetxController {
           // fetch user info if not present
           if (user.value == null) {
               try {
-                final u = await api.getSelfUserInfo('');
-                user(u);
-                await ensureAuthorForUser(u);
+                await refreshSelfUserInfo();
                 await refreshFavorites();
               } catch(e) {
                 logger.e('Failed to fetch user after login', error: e);
@@ -265,6 +305,7 @@ class Controller extends GetxController {
     searchEndCur = pagination.endCursor;
     searchHasNextPage.value = pagination.hasNextPage;
     searchResult.addAll(pagination.nodes);
+    await updateUserAvatarFromDiscussionsCache();
   }
 
   Future<String?> ensureAuthorForUser(AuthorModel? u) async {
@@ -323,6 +364,7 @@ class Controller extends GetxController {
         user.refresh();
         await _refreshAvatarCaches(refreshed);
       }
+      await refreshSelfUserInfo();
       Get.rawSnackbar(message: '头像已更新'.tr);
     } catch (e) {
       Get.rawSnackbar(message: '头像上传失败: $e');
