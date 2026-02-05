@@ -73,7 +73,16 @@ class BaseConnect extends GetConnect {
     httpClient.defaultContentType = 'application/json';
     httpClient.addRequestModifier<dynamic>((request) {
       final token = box.read<String>('access_token') ?? '';
-      if (token.isNotEmpty) {
+      
+      // Define public endpoints that should not send auth token to maximize cache hits
+      // Matches /api/articles, /api/comments, /api/authors and their sub-paths
+      final isPublicEndpoint = request.url.path.startsWith('/api/articles') ||
+          request.url.path.startsWith('/api/comments') ||
+          request.url.path.startsWith('/api/authors');
+      
+      // Only attach token if it exists AND (it's not a GET request OR it's not a public endpoint)
+      // This ensures POST/PUT/DELETE always get auth, but GET public data stays anonymous for caching
+      if (token.isNotEmpty && !(request.method.toUpperCase() == 'GET' && isPublicEndpoint)) {
         request.headers['Authorization'] = 'Bearer $token';
       }
       return Future.value(request);
