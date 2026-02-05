@@ -322,6 +322,13 @@ class Controller extends GetxController {
     );
     if (id != null && id.isNotEmpty) {
       authorId.value = id;
+      if (u.userId != null && u.userId!.isNotEmpty) {
+        try {
+          await api.linkAuthorToUser(authorId: id, userId: u.userId!);
+        } catch (_) {
+          // Best-effort linking; avoid blocking login flow.
+        }
+      }
     }
     return id;
   }
