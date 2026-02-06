@@ -51,7 +51,7 @@ class _SearchPageState extends State<SearchPage>
                   padding: EdgeInsets.only(left: 8),
                   child: Icon(Icons.search),
                 ),
-                hintText: '搜索讨论',
+                hintText: '搜索',
               ),
             ),
             const SizedBox(height: 8),

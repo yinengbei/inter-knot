@@ -38,7 +38,7 @@ class Comment extends StatelessWidget {
             }
             return const Padding(
               padding: EdgeInsets.all(16),
-              child: Text('没有更多评论了'),
+              child: Center(child: Text('没有更多评论了')),
             );
           }
 

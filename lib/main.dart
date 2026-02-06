@@ -7,6 +7,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/my_app_bar.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:inter_knot/helpers/app_scroll_behavior.dart';
 import 'package:inter_knot/pages/home_page.dart';
 import 'package:inter_knot/pages/search_page.dart';
 
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     return GetMaterialApp(
       title: 'Inter-Knot',
+      scrollBehavior: AppScrollBehavior(),
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ZhCn',

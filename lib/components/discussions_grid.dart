@@ -26,7 +26,9 @@ class DiscussionGrid extends StatelessWidget {
         return WaterfallFlow.builder(
           padding: const EdgeInsets.all(8),
           gridDelegate: SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 250,
+            maxCrossAxisExtent: 275,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
             lastChildLayoutTypeBuilder: (index) => index == list.length
                 ? LastChildLayoutType.foot
                 : LastChildLayoutType.none,
@@ -113,15 +115,15 @@ class DiscussionGrid extends StatelessWidget {
                     clipBehavior: Clip.antiAlias,
                     color: const Color(0xff222222),
                     child: InkWell(
-                    onTap: () => launchUrlString(item.url),
-                    child: const AspectRatio(
-                      aspectRatio: 5 / 6,
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: Text('讨论已删除')),
+                      onTap: () => launchUrlString(item.url),
+                      child: const AspectRatio(
+                        aspectRatio: 5 / 6,
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: Text('讨论已删除')),
+                        ),
                       ),
                     ),
-                  ),
                   );
                 }
                 return Card(

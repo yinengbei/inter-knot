@@ -73,16 +73,17 @@ class BaseConnect extends GetConnect {
     httpClient.defaultContentType = 'application/json';
     httpClient.addRequestModifier<dynamic>((request) {
       final token = box.read<String>('access_token') ?? '';
-      
+
       // Define public endpoints that should not send auth token to maximize cache hits
       // Matches /api/articles, /api/comments, /api/authors and their sub-paths
       final isPublicEndpoint = request.url.path.startsWith('/api/articles') ||
           request.url.path.startsWith('/api/comments') ||
           request.url.path.startsWith('/api/authors');
-      
+
       // Only attach token if it exists AND (it's not a GET request OR it's not a public endpoint)
       // This ensures POST/PUT/DELETE always get auth, but GET public data stays anonymous for caching
-      if (token.isNotEmpty && !(request.method.toUpperCase() == 'GET' && isPublicEndpoint)) {
+      if (token.isNotEmpty &&
+          !(request.method.toUpperCase() == 'GET' && isPublicEndpoint)) {
         request.headers['Authorization'] = 'Bearer $token';
       }
       return Future.value(request);
@@ -516,7 +517,9 @@ class Api extends BaseConnect {
 
     final data = unwrapData<Map<String, dynamic>>(res);
     final user = AuthorModel.fromJson(data);
-    if (user.avatar.isEmpty && user.authorId != null && user.authorId!.isNotEmpty) {
+    if (user.avatar.isEmpty &&
+        user.authorId != null &&
+        user.authorId!.isNotEmpty) {
       try {
         final url = await getAuthorAvatarUrl(user.authorId!);
         if (url != null && url.isNotEmpty) {
@@ -543,7 +546,9 @@ class Api extends BaseConnect {
     if (list.isEmpty) throw ApiException('User not found');
 
     final user = AuthorModel.fromJson(list.first as Map<String, dynamic>);
-    if (user.avatar.isEmpty && user.authorId != null && user.authorId!.isNotEmpty) {
+    if (user.avatar.isEmpty &&
+        user.authorId != null &&
+        user.authorId!.isNotEmpty) {
       try {
         final url = await getAuthorAvatarUrl(user.authorId!);
         if (url != null && url.isNotEmpty) {
