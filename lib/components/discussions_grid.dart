@@ -46,11 +46,11 @@ class _DiscussionGridState extends State<DiscussionGrid> {
           physics: !isCompact
               ? const NeverScrollableScrollPhysics()
               : const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(4),
           gridDelegate: SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 275,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
             lastChildLayoutTypeBuilder: (index) => index == list.length
                 ? LastChildLayoutType.foot
                 : LastChildLayoutType.none,
@@ -137,6 +137,8 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                     clipBehavior: Clip.antiAlias,
                     color: const Color(0xff222222),
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       onTap: () => launchUrlString(item.url),
                       child: const AspectRatio(
                         aspectRatio: 5 / 6,
@@ -152,6 +154,8 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                   clipBehavior: Clip.antiAlias,
                   color: const Color(0xff222222),
                   child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
                     onTap: () => launchUrlString(item.url),
                     child: const AspectRatio(
                       aspectRatio: 5 / 6,

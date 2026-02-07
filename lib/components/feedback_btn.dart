@@ -12,6 +12,9 @@ class FeedbackBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
+      style: const ButtonStyle(
+        overlayColor: WidgetStatePropertyAll(Colors.transparent),
+      ),
       onPressed: () async {
         Future.delayed(3.s).then((_) => launchUrlString(issuesLink));
         await copyText(

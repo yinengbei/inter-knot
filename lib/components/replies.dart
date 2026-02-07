@@ -6,6 +6,7 @@ import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class Replies extends StatelessWidget {
@@ -27,6 +28,8 @@ class Replies extends StatelessWidget {
             leading: MediaQuery.of(context).size.width > 400
                 ? ClipOval(
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       borderRadius: BorderRadius.circular(50),
                       onTap: () => launchUrlString(reply.url),
                       child: Avatar(reply.author.avatar),
@@ -37,6 +40,8 @@ class Replies extends StatelessWidget {
               children: [
                 Flexible(
                   child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
                     onTap: () => launchUrlString(reply.url),
                     child: Obx(
                       () => Text(
@@ -56,8 +61,7 @@ class Replies extends StatelessWidget {
                         const MyChip('楼主'),
                       if (reply.author.login == comment.author.login)
                         const MyChip('层主'),
-                      if (reply.author.login == owner)
-                        const MyChip('绳网创始人'),
+                      if (reply.author.login == owner) const MyChip('绳网创始人'),
                       if (collaborators.contains(reply.author.login))
                         const MyChip('绳网协作者'),
                     ],
@@ -69,7 +73,8 @@ class Replies extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '发布时间：${reply.createdAt.toLocal()}',
+                  DateFormat('yyyy-MM-dd HH:mm')
+                      .format(reply.createdAt.toLocal()),
                 ),
                 const SizedBox(height: 8),
                 SelectionArea(

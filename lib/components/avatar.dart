@@ -50,6 +50,8 @@ class Avatar extends StatelessWidget {
     );
     if (onTap == null) return avatar;
     return InkWell(
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       customBorder: const CircleBorder(),
       onTap: onTap,
       child: avatar,

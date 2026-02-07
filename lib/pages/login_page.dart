@@ -139,6 +139,10 @@ class _LoginPageState extends State<LoginPage> {
                       width: double.infinity,
                       height: 48,
                       child: FilledButton(
+                        style: const ButtonStyle(
+                          overlayColor:
+                              WidgetStatePropertyAll(Colors.transparent),
+                        ),
                         onPressed: isLoading ? null : _submit,
                         child: isLoading
                             ? const CircularProgressIndicator()
@@ -147,6 +151,10 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
+                      style: const ButtonStyle(
+                        overlayColor:
+                            WidgetStatePropertyAll(Colors.transparent),
+                      ),
                       onPressed: () {
                         setState(() {
                           isRegister = !isRegister;

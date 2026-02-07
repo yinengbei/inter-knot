@@ -40,6 +40,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
       ScrollController(); // New controller for left side
   final c = Get.find<Controller>();
   bool _isLoadingMore = false;
+  bool _isInitialLoading = false;
 
   @override
   void initState() {
@@ -47,6 +48,11 @@ class _DiscussionPageState extends State<DiscussionPage> {
     Future(() {
       c.history({widget.hData, ...c.history});
     });
+
+    if (widget.discussion.comments.isEmpty) {
+      _isInitialLoading = true;
+    }
+
     scrollController.addListener(() {
       if (_isLoadingMore) return;
       final maxScroll = scrollController.position.maxScrollExtent;
@@ -71,11 +77,14 @@ class _DiscussionPageState extends State<DiscussionPage> {
             widget.discussion.hasNextPage()) {
           await widget.discussion.fetchComments();
         }
-        if (mounted) {
-          setState(() {});
-        }
       } catch (e, s) {
         logger.e('Failed to get scroll position', error: e, stackTrace: s);
+      }
+    }).whenComplete(() {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+        });
       }
     });
   }
@@ -85,6 +94,21 @@ class _DiscussionPageState extends State<DiscussionPage> {
     scrollController.dispose();
     leftScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (mounted) {
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scrollController.hasClients) {
+          scrollController.animateTo(
+            scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutQuart,
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -277,11 +301,8 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                 DiscussionActionButtons(
                                                   discussion: widget.discussion,
                                                   hData: widget.hData,
-                                                  onCommentAdded: () {
-                                                    if (mounted) {
-                                                      setState(() {});
-                                                    }
-                                                  },
+                                                  onCommentAdded:
+                                                      _scrollToBottom,
                                                 ),
                                                 const SizedBox(height: 16),
                                                 const Divider(),
@@ -291,7 +312,9 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                 else
                                                   Comment(
                                                       discussion:
-                                                          widget.discussion),
+                                                          widget.discussion,
+                                                      loading:
+                                                          _isInitialLoading),
                                               ],
                                             ),
                                           ),
@@ -404,6 +427,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                               bottom: 16,
                                             ),
                                             height: double.infinity,
+                                            padding: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
                                               color: const Color(0xff070707),
                                               borderRadius:
@@ -413,65 +437,70 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                 width: 4,
                                               ),
                                             ),
-                                            child: Column(
-                                              children: [
-                                                Expanded(
-                                                  child: AdaptiveSmoothScroll(
-                                                    controller:
-                                                        scrollController,
-                                                    scrollSpeed: 0.5,
-                                                    builder: (context,
-                                                            physics) =>
-                                                        SingleChildScrollView(
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Column(
+                                                children: [
+                                                  Expanded(
+                                                    child: AdaptiveSmoothScroll(
                                                       controller:
                                                           scrollController,
-                                                      physics: physics,
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(16.0),
-                                                        child: Column(
-                                                          children: [
-                                                            if (widget
-                                                                    .discussion
-                                                                    .id ==
-                                                                reportDiscussionNumber)
-                                                              const ReportDiscussionComment()
-                                                            else
-                                                              Comment(
-                                                                  discussion: widget
-                                                                      .discussion),
-                                                          ],
+                                                      scrollSpeed: 0.5,
+                                                      builder: (context,
+                                                              physics) =>
+                                                          SingleChildScrollView(
+                                                        controller:
+                                                            scrollController,
+                                                        physics: physics,
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(16.0),
+                                                          child: Column(
+                                                            children: [
+                                                              if (widget
+                                                                      .discussion
+                                                                      .id ==
+                                                                  reportDiscussionNumber)
+                                                                const ReportDiscussionComment()
+                                                              else
+                                                                Comment(
+                                                                    discussion:
+                                                                        widget
+                                                                            .discussion,
+                                                                    loading:
+                                                                        _isInitialLoading),
+                                                            ],
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                                Container(
-                                                  padding: const EdgeInsets.all(
-                                                      16.0),
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                    border: Border(
-                                                      top: BorderSide(
-                                                        color:
-                                                            Color(0xff313132),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            16.0),
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                      border: Border(
+                                                        top: BorderSide(
+                                                          color:
+                                                              Color(0xff313132),
+                                                        ),
                                                       ),
                                                     ),
+                                                    child:
+                                                        DiscussionActionButtons(
+                                                      discussion:
+                                                          widget.discussion,
+                                                      hData: widget.hData,
+                                                      onCommentAdded:
+                                                          _scrollToBottom,
+                                                    ),
                                                   ),
-                                                  child:
-                                                      DiscussionActionButtons(
-                                                    discussion:
-                                                        widget.discussion,
-                                                    hData: widget.hData,
-                                                    onCommentAdded: () {
-                                                      if (mounted) {
-                                                        setState(() {});
-                                                      }
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -760,7 +789,7 @@ class _DiscussionActionButtonsState extends State<DiscussionActionButtons>
                                           cursorColor: Colors.white,
                                           decoration:
                                               const InputDecoration.collapsed(
-                                            hintText: '写评论...',
+                                            hintText: '请输入文本...',
                                             hintStyle:
                                                 TextStyle(color: Colors.grey),
                                           ),

@@ -9,6 +9,7 @@ class MyTab extends StatelessWidget {
     required this.onTap,
     this.first = false,
     this.last = false,
+    this.isSelected = false,
     this.trailing,
   }) : assert(first && !last || !first && last || !first && !last);
 
@@ -16,6 +17,7 @@ class MyTab extends StatelessWidget {
   final void Function() onTap;
   final bool first;
   final bool last;
+  final bool isSelected;
   final Widget? trailing;
 
   @override
@@ -33,9 +35,10 @@ class MyTab extends StatelessWidget {
               children: [
                 Text(
                   text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: isSelected ? const Color(0xffFBC02D) : Colors.white,
                   ),
                 ),
                 AnimatedContainer(

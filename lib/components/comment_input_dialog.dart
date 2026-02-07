@@ -122,6 +122,8 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
                   ),
                 ),
                 IconButton(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
                   icon: const Icon(Icons.close),
                   onPressed: isLoading ? null : () => Get.back(),
                 ),
@@ -147,11 +149,17 @@ class _CommentInputDialogState extends State<CommentInputDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
+                  style: const ButtonStyle(
+                    overlayColor: WidgetStatePropertyAll(Colors.transparent),
+                  ),
                   onPressed: isLoading ? null : () => Get.back(),
                   child: const Text('取消'),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
+                  style: const ButtonStyle(
+                    overlayColor: WidgetStatePropertyAll(Colors.transparent),
+                  ),
                   onPressed: isLoading ? null : _submit,
                   child: isLoading
                       ? const SizedBox(

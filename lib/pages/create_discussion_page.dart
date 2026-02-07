@@ -287,6 +287,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                 children: [
                   Expanded(
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       onTap: () {
                         setState(() {
                           _selectedIndex = 0;
@@ -318,6 +320,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                       color: const Color(0xffFBC02D),
                       shape: const CircleBorder(),
                       child: InkWell(
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
                         customBorder: const CircleBorder(),
                         onTap: isLoading ? null : _submit,
                         child: SizedBox(
@@ -335,6 +339,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                   ),
                   Expanded(
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       onTap: () {
                         setState(() {
                           _selectedIndex = 1;
@@ -519,7 +525,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(4),
+                                                padding:
+                                                    const EdgeInsets.all(4),
                                                 decoration: const BoxDecoration(
                                                   color: Color(0xffFBC02D),
                                                   shape: BoxShape.circle,

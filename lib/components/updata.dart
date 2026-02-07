@@ -125,6 +125,9 @@ class _UpdataState extends State<Updata> {
       actions: [
         if (!widget.mustUpdate)
           TextButton(
+            style: const ButtonStyle(
+              overlayColor: WidgetStatePropertyAll(Colors.transparent),
+            ),
             onPressed: () => Get.back(),
             child: const Text('确定'),
           ),

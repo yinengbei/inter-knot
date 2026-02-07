@@ -41,6 +41,7 @@ class MyAppBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(maxRadius),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Obx(() {
                       final canUpload = c.isLogin.value;
@@ -98,22 +99,28 @@ class MyAppBar extends StatelessWidget {
                       repeat: ImageRepeat.repeat,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      MyTab(
-                        first: true,
-                        text: '推送',
-                        onTap: () {
-                          if (c.curPage() == 0) c.refreshSearchData();
-                          c.animateToPage(0);
-                        },
-                      ),
-                      MyTab(
-                        text: '我的',
-                        onTap: () => c.animateToPage(1),
-                      ),
-                    ],
-                  ),
+                  child: Obx(() {
+                    final page = c.curPage.value;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MyTab(
+                          first: true,
+                          text: '推送',
+                          isSelected: page == 0,
+                          onTap: () {
+                            if (c.curPage() == 0) c.refreshSearchData();
+                            c.animateToPage(0);
+                          },
+                        ),
+                        MyTab(
+                          text: '我的',
+                          isSelected: page == 1,
+                          onTap: () => c.animateToPage(1),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
             ],
           ),
