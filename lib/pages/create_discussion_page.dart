@@ -363,33 +363,80 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final newPlaceholder = '![正在上传图片：$filename ($percent%)]()';
 
     final plainText = _quillController.document.toPlainText();
-    final index = plainText.indexOf(oldPlaceholder);
+    var index = plainText.indexOf(oldPlaceholder);
 
-    if (index >= 0) {
-      // 执行替换
-      _quillController.document.replace(
-        index,
-        oldPlaceholder.length,
-        newPlaceholder,
-      );
-
-      // 更新任务列表中的占位符引用
-      task.placeholder = newPlaceholder;
+    // 如果找不到，尝试用正则匹配
+    if (index < 0) {
+      final escapedFilename = RegExp.escape(filename);
+      final pattern = RegExp(r'!\[正在上传图片：' + escapedFilename + r' \(\d+%\)\]\(\)');
+      final match = pattern.firstMatch(plainText);
+      if (match != null) {
+        index = match.start;
+        final matchedLength = match.group(0)!.length;
+        _quillController.document.replace(
+          index,
+          matchedLength,
+          newPlaceholder,
+        );
+        task.placeholder = newPlaceholder;
+        return;
+      }
+      debugPrint('Could not find placeholder for progress update: $oldPlaceholder');
+      return;
     }
+
+    // 执行替换
+    _quillController.document.replace(
+      index,
+      oldPlaceholder.length,
+      newPlaceholder,
+    );
+
+    // 更新任务列表中的占位符引用
+    task.placeholder = newPlaceholder;
   }
 
   /// 替换占位符为最终内容
   void _replacePlaceholder(String placeholder, String replacement) {
+    // 获取文档纯文本
     final plainText = _quillController.document.toPlainText();
-    final index = plainText.indexOf(placeholder);
-
-    if (index >= 0) {
-      _quillController.document.replace(
-        index,
-        placeholder.length,
-        replacement,
-      );
+    
+    // 尝试直接查找
+    var index = plainText.indexOf(placeholder);
+    
+    // 如果找不到，尝试从 placeholder 中提取文件名，用正则匹配
+    if (index < 0) {
+      // 尝试提取文件名
+      final filenameExtractMatch = RegExp(r'!\[正在上传图片：([^)]+)\(\d+%\)\]\(\)')
+          .firstMatch(placeholder);
+      if (filenameExtractMatch != null) {
+        final filename = filenameExtractMatch.group(1)!;
+        // 移除进度百分比部分，只保留文件名
+        final cleanFilename = filename.replaceAll(RegExp(r' \(\d+%\)$'), '');
+        final escapedFilename = RegExp.escape(cleanFilename);
+        // 在文档中查找匹配的占位符
+        final pattern = RegExp(r'!\[正在上传图片：' + escapedFilename + r' \(\d+%\)\]\(\)');
+        final match = pattern.firstMatch(plainText);
+        if (match != null) {
+          index = match.start;
+          final matchedLength = match.group(0)!.length;
+          _quillController.document.replace(
+            index,
+            matchedLength,
+            replacement,
+          );
+          return;
+        }
+      }
+      debugPrint('Could not find placeholder: $placeholder');
+      return;
     }
+
+    _quillController.document.replace(
+      index,
+      placeholder.length,
+      replacement,
+    );
   }
 
   Future<void> _submit() async {
