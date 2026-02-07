@@ -377,17 +377,38 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   int _findPlaceholderIndex(_UploadingImageTask task) {
-    final text = _quillController.document.toPlainText();
-    if (text.isEmpty) return task.documentIndex;
+    final delta = _quillController.document.toDelta();
+    var index = 0;
+    int? bestIndex;
+    var bestDistance = 1 << 30;
 
-    final start = task.documentIndex.clamp(0, text.length);
-    final idxFromStart = text.indexOf(task.placeholder, start);
-    if (idxFromStart != -1) return idxFromStart;
+    for (final op in delta.toList()) {
+      final insert = op.data;
+      if (insert is String) {
+        var searchStart = 0;
+        while (true) {
+          final pos = insert.indexOf(task.placeholder, searchStart);
+          if (pos == -1) break;
+          final absolute = index + pos;
+          final distance = (absolute - task.documentIndex).abs();
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = absolute;
+          }
+          searchStart = pos + task.placeholder.length;
+        }
+        index += insert.length;
+      } else {
+        // embeds count as length 1 in document indices
+        index += 1;
+      }
+    }
 
-    final idx = text.indexOf(task.placeholder);
-    if (idx != -1) return idx;
-
-    return task.documentIndex.clamp(0, text.length);
+    final docLength = _quillController.document.length;
+    if (bestIndex != null) {
+      return bestIndex!.clamp(0, docLength);
+    }
+    return task.documentIndex.clamp(0, docLength);
   }
 
   Future<void> _submit() async {
