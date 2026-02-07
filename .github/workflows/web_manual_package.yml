@@ -24,7 +24,7 @@ jobs:
       - run: dart gen_secrets.dart
 
       - name: Flutter Pub Get (Silent)
-        run: flutter pub get --suppress-analytics >/dev/null
+        run: flutter pub get --suppress-analytics >/dev/null 2>&1
 
       - run: flutter build web --no-wasm-dry-run --suppress-analytics
 

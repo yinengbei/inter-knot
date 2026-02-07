@@ -213,6 +213,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         bytes: bytes,
         filename: filename,
         mimeType: mimeType,
+        onProgress: (_) {},
       );
 
       if (result == null) {
