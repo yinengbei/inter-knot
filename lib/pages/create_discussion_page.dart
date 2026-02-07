@@ -236,9 +236,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           ? filename.substring(0, filename.lastIndexOf('.'))
           : filename;
 
-      // 构建 HTML img 标签（用户需求）
-      final imgHtml = '<img alt="$baseName" src="$fullUrl" />';
-      _replaceToken(token, imgHtml);
+      // 使用 Markdown 图片语法，确保编辑器可渲染
+      final imageMarkdown = '![$baseName]($fullUrl)';
+      _replaceToken(token, imageMarkdown);
     } catch (e) {
       _replaceToken(token, '![上传失败：$filename ($e)]()');
     }
@@ -289,7 +289,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final title = titleController.text.trim();
     final delta = _quillController.document.toDelta();
     final markdownText = DeltaToMarkdown().convert(delta);
-    final cover = coverController.text.trim();
+    final coverInput = coverController.text.trim();
+    final cover = coverInput.isEmpty
+        ? _extractFirstImageUrl(markdownText) ?? ''
+        : coverInput;
 
     if (title.isEmpty) {
       Get.rawSnackbar(message: '标题不能为空');
@@ -386,6 +389,28 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         });
       }
     }
+  }
+
+  String? _extractFirstImageUrl(String text) {
+    final markdownMatch = RegExp(r'!\[[^\]]*\]\(([^)\s]+)\)')
+        .firstMatch(text);
+    final markdownUrl = markdownMatch?.group(1);
+    if (_isValidImageUrl(markdownUrl)) return markdownUrl;
+
+    final htmlMatch =
+        RegExp(r'src=["\']([^"\']+)["\']').firstMatch(text);
+    final htmlUrl = htmlMatch?.group(1);
+    if (_isValidImageUrl(htmlUrl)) return htmlUrl;
+
+    return null;
+  }
+
+  bool _isValidImageUrl(String? url) {
+    if (url == null || url.isEmpty) return false;
+    if (url.startsWith('uploading:') || url.startsWith('{{uploading:')) {
+      return false;
+    }
+    return url.startsWith('http://') || url.startsWith('https://');
   }
 
   @override
