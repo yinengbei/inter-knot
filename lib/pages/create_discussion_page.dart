@@ -143,7 +143,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final items = event.clipboardData?.items;
     if (items == null || items.length == 0) return;
 
-    final length = items.length;
+    final length = items.length!;
     for (var i = 0; i < length; i++) {
       final item = items[i];
       final mimeType = item.type;
