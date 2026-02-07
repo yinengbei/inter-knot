@@ -141,13 +141,15 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   /// 处理粘贴事件
   Future<void> _handlePasteEvent(html.ClipboardEvent event) async {
     final items = event.clipboardData?.items;
-    if (items == null || items.isEmpty) return;
+    if (items == null || items.length == 0) return;
 
-    for (var i = 0; i < items.length; i++) {
+    final length = items.length;
+    for (var i = 0; i < length; i++) {
       final item = items[i];
+      final mimeType = item.type;
 
       // 检查是否是图片类型
-      if (item.type.startsWith('image/')) {
+      if (mimeType != null && mimeType.startsWith('image/')) {
         // 阻止默认粘贴行为
         event.preventDefault();
 
@@ -174,7 +176,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           );
 
           // 开始上传
-          _startImageUpload(placeholder, filename, bytes, item.type);
+          _startImageUpload(placeholder, filename, bytes, mimeType);
         } catch (e) {
           debugPrint('Failed to handle pasted image: $e');
           Get.rawSnackbar(message: '图片处理失败: $e');

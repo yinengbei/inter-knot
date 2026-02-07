@@ -18,7 +18,7 @@ import 'package:inter_knot/models/report_comment.dart';
 import 'package:inter_knot/pages/login_page.dart';
 
 // Conditional import for web platform
-import 'package:universal_html/html.dart' as html;
+import 'dart:html' as html;
 
 class AuthApi extends GetConnect {
   @override
