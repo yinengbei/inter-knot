@@ -245,9 +245,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   void _replaceToken(String token, String replacement) {
-    final text = _quillController.document.toPlainText();
-    final index = text.indexOf(token);
-    if (index == -1) return;
+    final index = _findTokenIndex(token);
+    if (index == null) return;
 
     _quillController.replaceText(
       index,
@@ -259,6 +258,23 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       TextSelection.collapsed(offset: index + replacement.length),
       quill.ChangeSource.local,
     );
+  }
+
+  int? _findTokenIndex(String token) {
+    final delta = _quillController.document.toDelta();
+    var index = 0;
+    for (final op in delta.toList()) {
+      final data = op.data;
+      if (data is String) {
+        final pos = data.indexOf(token);
+        if (pos != -1) return index + pos;
+        index += data.length;
+      } else {
+        // embeds count as length 1
+        index += 1;
+      }
+    }
+    return null;
   }
 
   Future<void> _submit() async {
