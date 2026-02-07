@@ -247,22 +247,17 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   void _replaceToken(String token, String replacement) {
     final text = _quillController.document.toPlainText();
     final index = text.indexOf(token);
-    if (index == -1) {
-      final insertAt = _quillController.document.length - 1;
-      _quillController.replaceText(
-        insertAt,
-        0,
-        replacement,
-        TextSelection.collapsed(offset: insertAt + replacement.length),
-      );
-      return;
-    }
+    if (index == -1) return;
 
     _quillController.replaceText(
       index,
       token.length,
       replacement,
-      _quillController.selection,
+      TextSelection.collapsed(offset: index + replacement.length),
+    );
+    _quillController.updateSelection(
+      TextSelection.collapsed(offset: index + replacement.length),
+      quill.ChangeSource.local,
     );
   }
 
