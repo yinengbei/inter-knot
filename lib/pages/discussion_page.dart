@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/avatar.dart';
@@ -533,23 +533,16 @@ class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
               ),
               const SizedBox(height: 16),
               SelectionArea(
-                child: MarkdownBody(
-                  data: discussion.rawBodyText,
-                  selectable: true,
-                  fitContent: false,
-                  styleSheet:
-                      MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                    p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: 16,
-                      fontFamily: 'ZhCn',
-                      fontFamilyFallback: const ['ZhCn'],
-                    ),
-                    blockSpacing: 16,
-                  ),
-                  onTapLink: (text, href, title) {
-                    if (href != null) {
-                      launchUrlString(href);
-                    }
+                child: HtmlWidget(
+                  discussion.bodyHTML,
+                  textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 16,
+                        fontFamily: 'ZhCn',
+                        fontFamilyFallback: const ['ZhCn'],
+                      ),
+                  onTapUrl: (url) {
+                    launchUrlString(url);
+                    return true;
                   },
                 ),
               ),
