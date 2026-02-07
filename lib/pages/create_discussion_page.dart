@@ -20,33 +20,6 @@ class CreateDiscussionPage extends StatefulWidget {
   State<CreateDiscussionPage> createState() => _CreateDiscussionPageState();
 }
 
-/// 上传中的图片任务信息
-class _UploadingImageTask {
-  final String id; // 唯一标识符
-  final int documentIndex; // 在文档中的位置
-  final int placeholderLength; // 占位符长度
-  final String placeholder; // 占位符文本
-  final String placeholderToken; // 唯一占位符标记
-  final String filename;
-  final Uint8List bytes;
-  final String mimeType;
-  final StreamController<int> progressController;
-  Future<void> future;
-
-  _UploadingImageTask({
-    required this.id,
-    required this.documentIndex,
-    required this.placeholderLength,
-    required this.placeholder,
-    required this.placeholderToken,
-    required this.filename,
-    required this.bytes,
-    required this.mimeType,
-    required this.progressController,
-    required this.future,
-  });
-}
-
 class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   final titleController = TextEditingController();
   final _quillController = quill.QuillController.basic();
@@ -57,13 +30,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
-
-  /// 正在上传的图片任务列表
-  final List<_UploadingImageTask> _uploadingImages = [];
-
-  /// 剪贴板图片缓存 Map<filename, bytes>
-  /// 用于临时存储粘贴的图片数据
-  final Map<String, Uint8List> _clipboardImageCache = {};
 
   /// 用于取消订阅粘贴事件
   html.EventListener? _pasteEventListener;
@@ -173,14 +139,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           final bytes = await _readFileAsBytes(file);
           final filename = file.name;
 
-          // 缓存图片数据
-          _clipboardImageCache[filename] = bytes;
-
           // 在光标位置插入占位符并开始上传
           final index = _quillController.selection.start;
 
           // 开始上传
-          _startImageUpload(
+          _uploadImageAndInsert(
             insertIndex: index,
             filename: filename,
             bytes: bytes,
@@ -218,117 +181,49 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     return completer.future;
   }
 
-  /// 开始图片上传
-  void _startImageUpload({
+  /// 粘贴图片 -> 上传 -> 替换为 HTML 图片标签
+  void _uploadImageAndInsert({
     required int insertIndex,
     required String filename,
     required Uint8List bytes,
     required String mimeType,
   }) {
-    final progressController = StreamController<int>.broadcast();
-
-    // 生成唯一ID
-    final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
-
-    final placeholderToken = 'uploading:$taskId';
-    final placeholder = '![正在上传图片：$filename (0%)]($placeholderToken)';
-
-    // 记录插入位置
-    final documentIndex = insertIndex;
-    final placeholderLength = placeholder.length;
+    final taskId = DateTime.now().millisecondsSinceEpoch.toString();
+    final token = '{{uploading:$taskId}}';
 
     // 插入占位符并移动光标到占位符后
     _quillController.replaceText(
-      documentIndex,
+      insertIndex,
       0,
-      placeholder,
-      TextSelection.collapsed(offset: documentIndex + placeholderLength),
+      token,
+      TextSelection.collapsed(offset: insertIndex + token.length),
     );
 
-    // 创建上传任务
-    final uploadFuture = _uploadImageWithProgress(
-      taskId: taskId,
-      filename: filename,
-      bytes: bytes,
-      mimeType: mimeType,
-      progressController: progressController,
-    );
-
-    final task = _UploadingImageTask(
-      id: taskId,
-      documentIndex: documentIndex,
-      placeholderLength: placeholderLength,
-      placeholder: placeholder,
-      placeholderToken: placeholderToken,
-      filename: filename,
-      bytes: bytes,
-      mimeType: mimeType,
-      progressController: progressController,
-      future: uploadFuture,
-    );
-
-    _uploadingImages.add(task);
-
-    // 监听进度（不再更新占位符文本，只在控制台输出）
-    progressController.stream.listen((percent) {
-      debugPrint('Uploading $filename: $percent%');
-    }, onError: (e) {
-      debugPrint('Progress stream error: $e');
-    });
+    _uploadAndReplace(token: token, filename: filename, bytes: bytes, mimeType: mimeType);
   }
 
-  /// 上传图片并处理进度
-  Future<void> _uploadImageWithProgress({
-    required String taskId,
+  Future<void> _uploadAndReplace({
+    required String token,
     required String filename,
     required Uint8List bytes,
     required String mimeType,
-    required StreamController<int> progressController,
   }) async {
     try {
       final result = await api.uploadImageWeb(
         bytes: bytes,
         filename: filename,
         mimeType: mimeType,
-        onProgress: (percent) {
-          if (!progressController.isClosed) {
-            progressController.add(percent);
-          }
-        },
-      );
-
-      // 获取任务信息
-      final task = _uploadingImages.firstWhere(
-        (t) => t.id == taskId,
-        orElse: () => throw Exception('Upload task not found: $taskId'),
       );
 
       if (result == null) {
-        // 替换为错误信息
-        final replaceIndex = _findPlaceholderIndex(task);
-        if (replaceIndex != null) {
-          _quillController.replaceText(
-            replaceIndex,
-            task.placeholderLength,
-            '![上传失败：$filename (服务器无响应)]()',
-            _quillController.selection,
-          );
-        }
+        _replaceToken(token, '![上传失败：$filename (服务器无响应)]()');
         return;
       }
 
       // 从服务器响应获取数据
       final url = result['url'] as String?;
       if (url == null) {
-        final replaceIndex = _findPlaceholderIndex(task);
-        if (replaceIndex != null) {
-          _quillController.replaceText(
-            replaceIndex,
-            task.placeholderLength,
-            '![上传失败：$filename (无URL)]()',
-            _quillController.selection,
-          );
-        }
+        _replaceToken(token, '![上传失败：$filename (无URL)]()');
         return;
       }
 
@@ -340,100 +235,34 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           ? filename.substring(0, filename.lastIndexOf('.'))
           : filename;
 
-      // 使用 Markdown 图片语法，避免 HTML 被截断或污染
-      final imageMarkdown = '![$baseName]($fullUrl)';
-
-      final replaceIndex = _findPlaceholderIndex(task);
-      if (replaceIndex == null) {
-        // 占位符找不到时，避免误替换，直接追加到末尾
-        final insertAt = _quillController.document.length - 1;
-        _quillController.replaceText(
-          insertAt,
-          0,
-          imageMarkdown,
-          TextSelection.collapsed(offset: insertAt + imageMarkdown.length),
-        );
-      } else {
-        _quillController.replaceText(
-          replaceIndex,
-          task.placeholderLength,
-          imageMarkdown,
-          _quillController.selection,
-        );
-      }
-
-      // 清理缓存
-      _clipboardImageCache.remove(filename);
+      // 构建 HTML img 标签（用户需求）
+      final imgHtml = '<img alt="$baseName" src="$fullUrl" />';
+      _replaceToken(token, imgHtml);
     } catch (e) {
-      // 尝试查找任务
-      final task = _uploadingImages.cast<_UploadingImageTask?>().firstWhere(
-        (t) => t?.id == taskId,
-        orElse: () => null,
-      );
-      
-      // 替换为错误信息
-      if (task != null) {
-        final replaceIndex = _findPlaceholderIndex(task);
-        if (replaceIndex != null) {
-          _quillController.replaceText(
-            replaceIndex,
-            task.placeholderLength,
-            '![上传失败：$filename ($e)]()',
-            _quillController.selection,
-          );
-        }
-      }
-    } finally {
-      if (!progressController.isClosed) {
-        progressController.close();
-      }
-      _uploadingImages.removeWhere((t) => t.id == taskId);
+      _replaceToken(token, '![上传失败：$filename ($e)]()');
     }
   }
 
-  int? _findPlaceholderIndex(_UploadingImageTask task) {
+  void _replaceToken(String token, String replacement) {
     final text = _quillController.document.toPlainText();
-    if (text.isEmpty) return null;
-
-    int? bestIndex;
-    var bestDistance = 1 << 30;
-
-    // 优先根据唯一 token 定位
-    final token = task.placeholderToken;
-    if (token.isNotEmpty) {
-      var start = 0;
-      while (true) {
-        final pos = text.indexOf(token, start);
-        if (pos == -1) break;
-        final candidateStart = pos - (task.placeholderLength - token.length);
-        final safeStart = candidateStart < 0 ? pos : candidateStart;
-        final distance = (safeStart - task.documentIndex).abs();
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = safeStart;
-        }
-        start = pos + token.length;
-      }
+    final index = text.indexOf(token);
+    if (index == -1) {
+      final insertAt = _quillController.document.length - 1;
+      _quillController.replaceText(
+        insertAt,
+        0,
+        replacement,
+        TextSelection.collapsed(offset: insertAt + replacement.length),
+      );
+      return;
     }
 
-    // 回退：根据完整占位符定位
-    if (bestIndex == null) {
-      var start = 0;
-      while (true) {
-        final pos = text.indexOf(task.placeholder, start);
-        if (pos == -1) break;
-        final distance = (pos - task.documentIndex).abs();
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = pos;
-        }
-        start = pos + task.placeholder.length;
-      }
-    }
-
-    if (bestIndex == null) return null;
-    final docLength = _quillController.document.length;
-    return bestIndex!.clamp(0, docLength);
+    _quillController.replaceText(
+      index,
+      token.length,
+      replacement,
+      _quillController.selection,
+    );
   }
 
   Future<void> _submit() async {
@@ -552,13 +381,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     if (_pasteEventListener != null) {
       html.window.removeEventListener('paste', _pasteEventListener);
     }
-
-    // 取消所有正在上传的任务
-    for (final task in _uploadingImages) {
-      task.progressController.close();
-    }
-    _uploadingImages.clear();
-    _clipboardImageCache.clear();
 
     titleController.dispose();
     _quillController.dispose();
