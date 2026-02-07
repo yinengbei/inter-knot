@@ -240,7 +240,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       0,
       placeholder,
       TextSelection.collapsed(offset: documentIndex + placeholderLength),
-      quill.ChangeSource.local,
     );
 
     // 创建上传任务
@@ -309,7 +308,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             task.placeholderLength,
             '![上传失败：$filename (服务器无响应)]()',
             _quillController.selection,
-            quill.ChangeSource.local,
           );
         }
         return;
@@ -325,7 +323,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             task.placeholderLength,
             '![上传失败：$filename (无URL)]()',
             _quillController.selection,
-            quill.ChangeSource.local,
           );
         }
         return;
@@ -351,7 +348,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           0,
           imageMarkdown,
           TextSelection.collapsed(offset: insertAt + imageMarkdown.length),
-          quill.ChangeSource.local,
         );
       } else {
         _quillController.replaceText(
@@ -359,7 +355,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           task.placeholderLength,
           imageMarkdown,
           _quillController.selection,
-          quill.ChangeSource.local,
         );
       }
 
@@ -381,7 +376,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             task.placeholderLength,
             '![上传失败：$filename ($e)]()',
             _quillController.selection,
-            quill.ChangeSource.local,
           );
         }
       }
