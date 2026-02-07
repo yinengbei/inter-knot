@@ -22,14 +22,20 @@ class CreateDiscussionPage extends StatefulWidget {
 
 /// 上传中的图片任务信息
 class _UploadingImageTask {
+  final String id; // 唯一标识符
   String placeholder;
   final String filename;
+  final Uint8List bytes;
+  final String mimeType;
   final StreamController<int> progressController;
   Future<void> future;
 
   _UploadingImageTask({
+    required this.id,
     required this.placeholder,
     required this.filename,
+    required this.bytes,
+    required this.mimeType,
     required this.progressController,
     required this.future,
   });
@@ -217,9 +223,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     String mimeType,
   ) {
     final progressController = StreamController<int>.broadcast();
+    
+    // 生成唯一ID
+    final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
 
     // 创建上传任务
     final uploadFuture = _uploadImageWithProgress(
+      taskId: taskId,
       placeholder: placeholder,
       filename: filename,
       bytes: bytes,
@@ -228,8 +238,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     );
 
     final task = _UploadingImageTask(
+      id: taskId,
       placeholder: placeholder,
       filename: filename,
+      bytes: bytes,
+      mimeType: mimeType,
       progressController: progressController,
       future: uploadFuture,
     );
@@ -238,7 +251,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
     // 监听进度并更新占位符
     progressController.stream.listen((percent) {
-      _updatePlaceholderProgress(placeholder, filename, percent);
+      _updatePlaceholderProgress(taskId, percent);
     }, onError: (e) {
       debugPrint('Progress stream error: $e');
     });
@@ -246,6 +259,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   /// 上传图片并处理进度
   Future<void> _uploadImageWithProgress({
+    required String taskId,
     required String placeholder,
     required String filename,
     required Uint8List bytes,
@@ -264,9 +278,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         },
       );
 
+      // 获取最新的占位符（因为可能在进度更新时已被修改）
+      final task = _uploadingImages.firstWhere(
+        (t) => t.id == taskId,
+        orElse: () => throw Exception('Upload task not found: $taskId'),
+      );
+      final currentPlaceholder = task.placeholder;
+
       if (result == null) {
         _replacePlaceholder(
-          placeholder,
+          currentPlaceholder,
           '![上传失败：$filename (服务器无响应)]()',
         );
         return;
@@ -279,16 +300,14 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
       if (url == null) {
         _replacePlaceholder(
-          placeholder,
+          currentPlaceholder,
           '![上传失败：$filename (无URL)]()',
         );
         return;
       }
 
-      // 构建完整 URL
-      final fullUrl = url.startsWith('http')
-          ? url
-          : 'https://ik.tiwat.cn$url';
+      // 构建完整 URL（已经是完整 URL，无需拼接）
+      final fullUrl = url;
 
       // 从文件名提取基础名（不含扩展名）
       final baseName = filename.contains('.')
@@ -302,29 +321,44 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           'alt="$baseName" '
           'src="$fullUrl" />';
 
-      _replacePlaceholder(placeholder, imgHtml);
+      _replacePlaceholder(currentPlaceholder, imgHtml);
 
       // 清理缓存
       _clipboardImageCache.remove(filename);
     } catch (e) {
+      // 尝试用 taskId 查找任务
+      final task = _uploadingImages.cast<_UploadingImageTask?>().firstWhere(
+        (t) => t?.id == taskId,
+        orElse: () => null,
+      );
+      final currentPlaceholder = task?.placeholder ?? placeholder;
+      
       _replacePlaceholder(
-        placeholder,
+        currentPlaceholder,
         '![上传失败：$filename ($e)]()',
       );
     } finally {
       if (!progressController.isClosed) {
         progressController.close();
       }
-      _uploadingImages.removeWhere((t) => t.placeholder == placeholder);
+      _uploadingImages.removeWhere((t) => t.id == taskId);
     }
   }
 
   /// 更新占位符中的进度百分比
   void _updatePlaceholderProgress(
-    String oldPlaceholder,
-    String filename,
+    String taskId,
     int percent,
   ) {
+    // 通过 taskId 查找任务
+    final task = _uploadingImages.firstWhere(
+      (t) => t.id == taskId,
+      orElse: () => throw Exception('Task not found: $taskId'),
+    );
+    
+    final oldPlaceholder = task.placeholder;
+    final filename = task.filename;
+    
     // 构建新的占位符文本
     final newPlaceholder = '![正在上传图片：$filename ($percent%)]()';
 
@@ -340,10 +374,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       );
 
       // 更新任务列表中的占位符引用
-      final task = _uploadingImages.firstWhere(
-        (t) => t.placeholder == oldPlaceholder,
-        orElse: () => throw Exception('Task not found'),
-      );
       task.placeholder = newPlaceholder;
     }
   }
