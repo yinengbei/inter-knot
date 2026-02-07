@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api_exception.dart';
@@ -14,6 +16,9 @@ import 'package:inter_knot/models/pagination.dart';
 import 'package:inter_knot/models/release.dart';
 import 'package:inter_knot/models/report_comment.dart';
 import 'package:inter_knot/pages/login_page.dart';
+
+// Conditional import for web platform
+import 'package:universal_html/html.dart' as html;
 
 class AuthApi extends GetConnect {
   @override
@@ -640,5 +645,81 @@ class Api extends BaseConnect {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Web 平台图片上传，带进度回调
+  ///
+  /// [bytes] - 图片二进制数据
+  /// [filename] - 文件名
+  /// [mimeType] - MIME 类型，如 'image/png'
+  /// [onProgress] - 进度回调，参数为 0-100
+  ///
+  /// 返回上传后的文件信息 Map，包含：
+  /// - url: String - 图片相对路径
+  /// - width: int - 图片宽度
+  /// - height: int - 图片高度
+  /// - name: String - 文件名
+  Future<Map<String, dynamic>?> uploadImageWeb({
+    required Uint8List bytes,
+    required String filename,
+    required String mimeType,
+    required void Function(int percent) onProgress,
+  }) async {
+    final completer = Completer<Map<String, dynamic>?>();
+
+    // 创建 FormData
+    final formData = html.FormData();
+    final blob = html.Blob([bytes], mimeType);
+    formData.appendBlob('files', blob, filename);
+
+    // 创建 XMLHttpRequest
+    final xhr = html.HttpRequest();
+    xhr.open('POST', '${httpClient.baseUrl}/api/upload');
+
+    // 添加认证头
+    final token = box.read<String>('access_token') ?? '';
+    if (token.isNotEmpty) {
+      xhr.setRequestHeader('Authorization', 'Bearer $token');
+    }
+
+    // 监听上传进度
+    xhr.upload.onProgress.listen((event) {
+      if (event.lengthComputable) {
+        final loaded = event.loaded ?? 0;
+        final total = event.total ?? 1;
+        final percent = ((loaded / total) * 100).round();
+        onProgress(percent);
+      }
+    });
+
+    // 监听完成
+    xhr.onLoad.listen((event) {
+      if (xhr.status == 200) {
+        try {
+          final response = jsonDecode(xhr.responseText ?? '[]') as List;
+          if (response.isNotEmpty) {
+            completer.complete(response.first as Map<String, dynamic>);
+          } else {
+            completer.completeError('Upload failed: empty response');
+          }
+        } catch (e) {
+          completer.completeError('Parse error: $e');
+        }
+      } else {
+        completer.completeError('HTTP ${xhr.status}: ${xhr.statusText}');
+      }
+    });
+
+    // 监听错误
+    xhr.onError.listen((event) {
+      completer.completeError('Network error');
+    });
+
+    xhr.onTimeout.listen((event) {
+      completer.completeError('Request timeout');
+    });
+
+    xhr.send(formData);
+    return completer.future;
   }
 }

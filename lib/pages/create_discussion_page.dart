@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:html' as html;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
@@ -15,6 +20,21 @@ class CreateDiscussionPage extends StatefulWidget {
   State<CreateDiscussionPage> createState() => _CreateDiscussionPageState();
 }
 
+/// 上传中的图片任务信息
+class _UploadingImageTask {
+  String placeholder;
+  final String filename;
+  final StreamController<int> progressController;
+  Future<void> future;
+
+  _UploadingImageTask({
+    required this.placeholder,
+    required this.filename,
+    required this.progressController,
+    required this.future,
+  });
+}
+
 class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   final titleController = TextEditingController();
   final _quillController = quill.QuillController.basic();
@@ -25,6 +45,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
+
+  /// 正在上传的图片任务列表
+  final List<_UploadingImageTask> _uploadingImages = [];
+
+  /// 剪贴板图片缓存 Map<filename, bytes>
+  /// 用于临时存储粘贴的图片数据
+  final Map<String, Uint8List> _clipboardImageCache = {};
+
+  /// 用于取消订阅粘贴事件
+  html.EventListener? _pasteEventListener;
 
   String _slugify(String input) {
     final normalized = input
@@ -98,6 +128,236 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
     }
     return false;
+  }
+
+  /// 设置粘贴事件监听
+  void _setupPasteListener() {
+    _pasteEventListener = (event) {
+      _handlePasteEvent(event as html.ClipboardEvent);
+    };
+    html.window.addEventListener('paste', _pasteEventListener);
+  }
+
+  /// 处理粘贴事件
+  Future<void> _handlePasteEvent(html.ClipboardEvent event) async {
+    final items = event.clipboardData?.items;
+    if (items == null || items.isEmpty) return;
+
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+
+      // 检查是否是图片类型
+      if (item.type.startsWith('image/')) {
+        // 阻止默认粘贴行为
+        event.preventDefault();
+
+        final file = item.getAsFile();
+        if (file == null) continue;
+
+        try {
+          // 读取文件数据
+          final bytes = await _readFileAsBytes(file);
+          final filename = file.name;
+
+          // 缓存图片数据
+          _clipboardImageCache[filename] = bytes;
+
+          // 在光标位置插入占位符
+          final placeholder = '![正在上传图片：$filename (0%)]()';
+          final index = _quillController.selection.start;
+          _quillController.document.insert(index, placeholder);
+
+          // 移动光标到占位符后
+          _quillController.updateSelection(
+            TextSelection.collapsed(offset: index + placeholder.length),
+            quill.ChangeSource.local,
+          );
+
+          // 开始上传
+          _startImageUpload(placeholder, filename, bytes, item.type);
+        } catch (e) {
+          debugPrint('Failed to handle pasted image: $e');
+          Get.rawSnackbar(message: '图片处理失败: $e');
+        }
+      }
+    }
+  }
+
+  /// 读取文件为 Uint8List
+  Future<Uint8List> _readFileAsBytes(html.File file) async {
+    final completer = Completer<Uint8List>();
+    final reader = html.FileReader();
+
+    reader.onLoadEnd.listen((event) {
+      final result = reader.result;
+      if (result is Uint8List) {
+        completer.complete(result);
+      } else if (result is ByteBuffer) {
+        completer.complete(Uint8List.view(result));
+      } else {
+        completer.completeError('Invalid file data');
+      }
+    });
+
+    reader.onError.listen((event) {
+      completer.completeError('File read error');
+    });
+
+    reader.readAsArrayBuffer(file);
+    return completer.future;
+  }
+
+  /// 开始图片上传
+  void _startImageUpload(
+    String placeholder,
+    String filename,
+    Uint8List bytes,
+    String mimeType,
+  ) {
+    final progressController = StreamController<int>.broadcast();
+
+    // 创建上传任务
+    final uploadFuture = _uploadImageWithProgress(
+      placeholder: placeholder,
+      filename: filename,
+      bytes: bytes,
+      mimeType: mimeType,
+      progressController: progressController,
+    );
+
+    final task = _UploadingImageTask(
+      placeholder: placeholder,
+      filename: filename,
+      progressController: progressController,
+      future: uploadFuture,
+    );
+
+    _uploadingImages.add(task);
+
+    // 监听进度并更新占位符
+    progressController.stream.listen((percent) {
+      _updatePlaceholderProgress(placeholder, filename, percent);
+    }, onError: (e) {
+      debugPrint('Progress stream error: $e');
+    });
+  }
+
+  /// 上传图片并处理进度
+  Future<void> _uploadImageWithProgress({
+    required String placeholder,
+    required String filename,
+    required Uint8List bytes,
+    required String mimeType,
+    required StreamController<int> progressController,
+  }) async {
+    try {
+      final result = await api.uploadImageWeb(
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+        onProgress: (percent) {
+          if (!progressController.isClosed) {
+            progressController.add(percent);
+          }
+        },
+      );
+
+      if (result == null) {
+        _replacePlaceholder(
+          placeholder,
+          '![上传失败：$filename (服务器无响应)]()',
+        );
+        return;
+      }
+
+      // 从服务器响应获取数据
+      final url = result['url'] as String?;
+      final width = result['width'] as int?;
+      final height = result['height'] as int?;
+
+      if (url == null) {
+        _replacePlaceholder(
+          placeholder,
+          '![上传失败：$filename (无URL)]()',
+        );
+        return;
+      }
+
+      // 构建完整 URL
+      final fullUrl = url.startsWith('http')
+          ? url
+          : 'https://ik.tiwat.cn$url';
+
+      // 从文件名提取基础名（不含扩展名）
+      final baseName = filename.contains('.')
+          ? filename.substring(0, filename.lastIndexOf('.'))
+          : filename;
+
+      // 构建 HTML img 标签
+      final imgHtml = '<img '
+          '${width != null ? 'width="$width" ' : ''}'
+          '${height != null ? 'height="$height" ' : ''}'
+          'alt="$baseName" '
+          'src="$fullUrl" />';
+
+      _replacePlaceholder(placeholder, imgHtml);
+
+      // 清理缓存
+      _clipboardImageCache.remove(filename);
+    } catch (e) {
+      _replacePlaceholder(
+        placeholder,
+        '![上传失败：$filename ($e)]()',
+      );
+    } finally {
+      if (!progressController.isClosed) {
+        progressController.close();
+      }
+      _uploadingImages.removeWhere((t) => t.placeholder == placeholder);
+    }
+  }
+
+  /// 更新占位符中的进度百分比
+  void _updatePlaceholderProgress(
+    String oldPlaceholder,
+    String filename,
+    int percent,
+  ) {
+    // 构建新的占位符文本
+    final newPlaceholder = '![正在上传图片：$filename ($percent%)]()';
+
+    final plainText = _quillController.document.toPlainText();
+    final index = plainText.indexOf(oldPlaceholder);
+
+    if (index >= 0) {
+      // 执行替换
+      _quillController.document.replace(
+        index,
+        oldPlaceholder.length,
+        newPlaceholder,
+      );
+
+      // 更新任务列表中的占位符引用
+      final task = _uploadingImages.firstWhere(
+        (t) => t.placeholder == oldPlaceholder,
+        orElse: () => throw Exception('Task not found'),
+      );
+      task.placeholder = newPlaceholder;
+    }
+  }
+
+  /// 替换占位符为最终内容
+  void _replacePlaceholder(String placeholder, String replacement) {
+    final plainText = _quillController.document.toPlainText();
+    final index = plainText.indexOf(placeholder);
+
+    if (index >= 0) {
+      _quillController.document.replace(
+        index,
+        placeholder.length,
+        replacement,
+      );
+    }
   }
 
   Future<void> _submit() async {
@@ -204,7 +464,26 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // 设置 Web 平台剪贴板粘贴监听
+    _setupPasteListener();
+  }
+
+  @override
   void dispose() {
+    // 移除粘贴事件监听
+    if (_pasteEventListener != null) {
+      html.window.removeEventListener('paste', _pasteEventListener);
+    }
+
+    // 取消所有正在上传的任务
+    for (final task in _uploadingImages) {
+      task.progressController.close();
+    }
+    _uploadingImages.clear();
+    _clipboardImageCache.clear();
+
     titleController.dispose();
     _quillController.dispose();
     coverController.dispose();
