@@ -175,12 +175,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           _clipboardImageCache[filename] = bytes;
 
           // 在光标位置插入占位符并开始上传
-          final placeholder = '![正在上传图片：$filename (0%)]()';
           final index = _quillController.selection.start;
 
           // 开始上传
           _startImageUpload(
-            placeholder: placeholder,
             insertIndex: index,
             filename: filename,
             bytes: bytes,
@@ -220,7 +218,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   /// 开始图片上传
   void _startImageUpload({
-    required String placeholder,
     required int insertIndex,
     required String filename,
     required Uint8List bytes,
@@ -231,15 +228,17 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     // 生成唯一ID
     final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
 
+    final placeholder = '![正在上传图片：$filename (0%)](uploading:$taskId)';
+
     // 记录插入位置
     final documentIndex = insertIndex;
     final placeholderLength = placeholder.length;
 
-    // 插入占位符
-    _quillController.document.insert(documentIndex, placeholder);
-
-    // 移动光标到占位符后
-    _quillController.updateSelection(
+    // 插入占位符并移动光标到占位符后
+    _quillController.replaceText(
+      documentIndex,
+      0,
+      placeholder,
       TextSelection.collapsed(offset: documentIndex + placeholderLength),
       quill.ChangeSource.local,
     );
@@ -305,10 +304,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         // 替换为错误信息
         final replaceIndex = _findPlaceholderIndex(task);
         if (replaceIndex != null) {
-          _quillController.document.replace(
+          _quillController.replaceText(
             replaceIndex,
             task.placeholderLength,
             '![上传失败：$filename (服务器无响应)]()',
+            _quillController.selection,
+            quill.ChangeSource.local,
           );
         }
         return;
@@ -319,10 +320,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       if (url == null) {
         final replaceIndex = _findPlaceholderIndex(task);
         if (replaceIndex != null) {
-          _quillController.document.replace(
+          _quillController.replaceText(
             replaceIndex,
             task.placeholderLength,
             '![上传失败：$filename (无URL)]()',
+            _quillController.selection,
+            quill.ChangeSource.local,
           );
         }
         return;
@@ -342,15 +345,21 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       final replaceIndex = _findPlaceholderIndex(task);
       if (replaceIndex == null) {
         // 占位符找不到时，避免误替换，直接追加到末尾
-        _quillController.document.insert(
-          _quillController.document.length - 1,
+        final insertAt = _quillController.document.length - 1;
+        _quillController.replaceText(
+          insertAt,
+          0,
           imageMarkdown,
+          TextSelection.collapsed(offset: insertAt + imageMarkdown.length),
+          quill.ChangeSource.local,
         );
       } else {
-        _quillController.document.replace(
+        _quillController.replaceText(
           replaceIndex,
           task.placeholderLength,
           imageMarkdown,
+          _quillController.selection,
+          quill.ChangeSource.local,
         );
       }
 
@@ -367,10 +376,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       if (task != null) {
         final replaceIndex = _findPlaceholderIndex(task);
         if (replaceIndex != null) {
-          _quillController.document.replace(
+          _quillController.replaceText(
             replaceIndex,
             task.placeholderLength,
             '![上传失败：$filename ($e)]()',
+            _quillController.selection,
+            quill.ChangeSource.local,
           );
         }
       }
