@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:html' as html;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
@@ -7,6 +12,7 @@ import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 import 'package:markdown_quill/markdown_quill.dart';
+import 'package:inter_knot/helpers/normalize_markdown.dart';
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key});
@@ -25,6 +31,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
+
+  /// 用于取消订阅粘贴事件
+  html.EventListener? _pasteEventListener;
 
   String _slugify(String input) {
     final normalized = input
@@ -100,11 +109,191 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     return false;
   }
 
+  /// 设置粘贴事件监听
+  void _setupPasteListener() {
+    _pasteEventListener = (event) {
+      _handlePasteEvent(event as html.ClipboardEvent);
+    };
+    html.window.addEventListener('paste', _pasteEventListener);
+  }
+
+  /// 处理粘贴事件
+  Future<void> _handlePasteEvent(html.ClipboardEvent event) async {
+    final items = event.clipboardData?.items;
+    if (items == null || items.length == 0) return;
+
+    final length = items.length!;
+    for (var i = 0; i < length; i++) {
+      final item = items[i];
+      final mimeType = item.type;
+
+      // 检查是否是图片类型
+      if (mimeType != null && mimeType.startsWith('image/')) {
+        // 阻止默认粘贴行为
+        event.preventDefault();
+
+        final file = item.getAsFile();
+        if (file == null) continue;
+
+        try {
+          // 读取文件数据
+          final bytes = await _readFileAsBytes(file);
+          final filename = file.name;
+
+          // 在光标位置插入占位符并开始上传
+          final index = _quillController.selection.start;
+
+          // 开始上传
+          _uploadImageAndInsert(
+            insertIndex: index,
+            filename: filename,
+            bytes: bytes,
+            mimeType: mimeType,
+          );
+        } catch (e) {
+          debugPrint('Failed to handle pasted image: $e');
+          Get.rawSnackbar(message: '图片处理失败: $e');
+        }
+      }
+    }
+  }
+
+  /// 读取文件为 Uint8List
+  Future<Uint8List> _readFileAsBytes(html.File file) async {
+    final completer = Completer<Uint8List>();
+    final reader = html.FileReader();
+
+    reader.onLoadEnd.listen((event) {
+      final result = reader.result;
+      if (result is Uint8List) {
+        completer.complete(result);
+      } else if (result is ByteBuffer) {
+        completer.complete(Uint8List.view(result));
+      } else {
+        completer.completeError('Invalid file data');
+      }
+    });
+
+    reader.onError.listen((event) {
+      completer.completeError('File read error');
+    });
+
+    reader.readAsArrayBuffer(file);
+    return completer.future;
+  }
+
+  /// 粘贴图片 -> 上传 -> 替换为 HTML 图片标签
+  void _uploadImageAndInsert({
+    required int insertIndex,
+    required String filename,
+    required Uint8List bytes,
+    required String mimeType,
+  }) {
+    final taskId = DateTime.now().millisecondsSinceEpoch.toString();
+    final token = '{{uploading:$taskId}}';
+
+    // 插入占位符并移动光标到占位符后
+    _quillController.replaceText(
+      insertIndex,
+      0,
+      token,
+      TextSelection.collapsed(offset: insertIndex + token.length),
+    );
+
+    _uploadAndReplace(token: token, filename: filename, bytes: bytes, mimeType: mimeType);
+  }
+
+  Future<void> _uploadAndReplace({
+    required String token,
+    required String filename,
+    required Uint8List bytes,
+    required String mimeType,
+  }) async {
+    try {
+      final result = await api.uploadImageWeb(
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+        onProgress: (_) {},
+      );
+
+      if (result == null) {
+        _replaceToken(token, '![上传失败：$filename (服务器无响应)]()');
+        return;
+      }
+
+      // 从服务器响应获取数据
+      final url = result['url'] as String?;
+      if (url == null) {
+        _replaceToken(token, '![上传失败：$filename (无URL)]()');
+        return;
+      }
+
+      // 构建完整 URL（已经是完整 URL，无需拼接）
+      final fullUrl = url;
+
+      // 从文件名提取基础名（不含扩展名）
+      final baseName = filename.contains('.')
+          ? filename.substring(0, filename.lastIndexOf('.'))
+          : filename;
+
+      // 使用 Markdown 图片语法，确保编辑器可渲染
+      final imageMarkdown = '![$baseName]($fullUrl)';
+      _replaceToken(token, imageMarkdown);
+    } catch (e) {
+      _replaceToken(token, '![上传失败：$filename ($e)]()');
+    }
+  }
+
+  void _replaceToken(String token, String replacement) {
+    final index = _findTokenIndex(token);
+    if (index == null) return;
+
+    // 先删除 token，再插入 HTML，避免转义导致的替换错位
+    _quillController.replaceText(
+      index,
+      token.length,
+      '',
+      TextSelection.collapsed(offset: index),
+    );
+    _quillController.replaceText(
+      index,
+      0,
+      replacement,
+      TextSelection.collapsed(offset: index + replacement.length),
+    );
+    _quillController.updateSelection(
+      TextSelection.collapsed(offset: index + replacement.length),
+      quill.ChangeSource.local,
+    );
+  }
+
+  int? _findTokenIndex(String token) {
+    final delta = _quillController.document.toDelta();
+    final buffer = StringBuffer();
+    for (final op in delta.toList()) {
+      final data = op.data;
+      if (data is String) {
+        buffer.write(data);
+      } else {
+        // embeds count as length 1 in document indices
+        buffer.write('\uFFFC');
+      }
+    }
+    final text = buffer.toString();
+    final pos = text.indexOf(token);
+    if (pos == -1) return null;
+    return pos;
+  }
+
   Future<void> _submit() async {
     final title = titleController.text.trim();
     final delta = _quillController.document.toDelta();
-    final markdownText = DeltaToMarkdown().convert(delta);
-    final cover = coverController.text.trim();
+    final markdownText = normalizeMarkdown(DeltaToMarkdown().convert(delta));
+    final coverInput = coverController.text.trim();
+    final cover = coverInput.isEmpty
+        ? _extractFirstImageUrl(markdownText) ?? ''
+        : coverInput;
 
     if (title.isEmpty) {
       Get.rawSnackbar(message: '标题不能为空');
@@ -203,8 +392,42 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
   }
 
+  String? _extractFirstImageUrl(String text) {
+    final markdownMatch = RegExp(r'!\[[^\]]*\]\(([^)\s]+)\)')
+        .firstMatch(text);
+    final markdownUrl = markdownMatch?.group(1);
+    if (_isValidImageUrl(markdownUrl)) return markdownUrl;
+
+    final htmlMatch =
+        RegExp("src=['\\\"]([^'\\\"]+)['\\\"]").firstMatch(text);
+    final htmlUrl = htmlMatch?.group(1);
+    if (_isValidImageUrl(htmlUrl)) return htmlUrl;
+
+    return null;
+  }
+
+  bool _isValidImageUrl(String? url) {
+    if (url == null || url.isEmpty) return false;
+    if (url.startsWith('uploading:') || url.startsWith('{{uploading:')) {
+      return false;
+    }
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // 设置 Web 平台剪贴板粘贴监听
+    _setupPasteListener();
+  }
+
   @override
   void dispose() {
+    // 移除粘贴事件监听
+    if (_pasteEventListener != null) {
+      html.window.removeEventListener('paste', _pasteEventListener);
+    }
+
     titleController.dispose();
     _quillController.dispose();
     coverController.dispose();

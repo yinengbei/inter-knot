@@ -1,6 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:inter_knot/helpers/parse_html.dart';
+import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
+
+String _shortenForLog(String input, [int max = 400]) {
+  if (input.length <= max) return input;
+  return '${input.substring(0, max)}...<${input.length} chars>';
+}
 
 class CommentModel {
   final AuthorModel author;
@@ -26,7 +33,15 @@ class CommentModel {
   factory CommentModel.fromJson(Map<String, dynamic> json) {
     // 处理 content 字段（可能是 Markdown 或 HTML）
     final content = json['content'] as String? ?? json['bodyHTML'] as String? ?? '';
-    final (:cover, :html) = parseHtml(content, true);
+    final normalized = normalizeMarkdown(content);
+    if (kDebugMode) {
+      debugPrint('Comment raw text: ${_shortenForLog(content)}');
+      debugPrint('Comment normalized: ${_shortenForLog(normalized)}');
+    }
+    final (:cover, :html) = parseHtml(normalized, true);
+    if (kDebugMode) {
+      debugPrint('Comment HTML: ${_shortenForLog(html)}');
+    }
     
     return CommentModel(
       author: AuthorModel.fromJson(json['author'] as Map<String, dynamic>),
