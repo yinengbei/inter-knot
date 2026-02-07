@@ -248,40 +248,23 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final index = _findTokenIndex(token);
     if (index == null) return;
 
-    // 先删除 token，再插入内容
+    // 先删除 token，再插入 HTML，避免转义导致的替换错位
     _quillController.replaceText(
       index,
       token.length,
       '',
       TextSelection.collapsed(offset: index),
     );
-    final imageUrl = _extractMarkdownImageUrl(replacement);
-    if (imageUrl != null) {
-      _quillController.document.insert(
-        index,
-        quill.BlockEmbed.image(imageUrl),
-      );
-    } else {
-      _quillController.replaceText(
-        index,
-        0,
-        replacement,
-        TextSelection.collapsed(offset: index + replacement.length),
-      );
-    }
+    _quillController.replaceText(
+      index,
+      0,
+      replacement,
+      TextSelection.collapsed(offset: index + replacement.length),
+    );
     _quillController.updateSelection(
-      TextSelection.collapsed(
-        offset: index + (imageUrl != null ? 1 : replacement.length),
-      ),
+      TextSelection.collapsed(offset: index + replacement.length),
       quill.ChangeSource.local,
     );
-  }
-
-  String? _extractMarkdownImageUrl(String text) {
-    final match = RegExp(r'!\[[^\]]*\]\(([^)\s]+)\)').firstMatch(text);
-    final url = match?.group(1);
-    if (url == null || url.isEmpty) return null;
-    return url;
   }
 
   int? _findTokenIndex(String token) {
