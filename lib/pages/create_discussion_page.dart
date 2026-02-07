@@ -23,7 +23,8 @@ class CreateDiscussionPage extends StatefulWidget {
 /// 上传中的图片任务信息
 class _UploadingImageTask {
   final String id; // 唯一标识符
-  String placeholder;
+  final int documentIndex; // 在文档中的位置
+  final int placeholderLength; // 占位符长度
   final String filename;
   final Uint8List bytes;
   final String mimeType;
@@ -32,7 +33,8 @@ class _UploadingImageTask {
 
   _UploadingImageTask({
     required this.id,
-    required this.placeholder,
+    required this.documentIndex,
+    required this.placeholderLength,
     required this.filename,
     required this.bytes,
     required this.mimeType,
@@ -227,10 +229,24 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     // 生成唯一ID
     final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
 
+    // 记录插入位置
+    final documentIndex = _quillController.selection.start;
+    final placeholderLength = placeholder.length;
+
+    // 插入占位符
+    _quillController.document.insert(documentIndex, placeholder);
+
+    // 移动光标到占位符后
+    _quillController.updateSelection(
+      TextSelection.collapsed(offset: documentIndex + placeholderLength),
+      quill.ChangeSource.local,
+    );
+
     // 创建上传任务
     final uploadFuture = _uploadImageWithProgress(
       taskId: taskId,
-      placeholder: placeholder,
+      documentIndex: documentIndex,
+      placeholderLength: placeholderLength,
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -239,7 +255,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
     final task = _UploadingImageTask(
       id: taskId,
-      placeholder: placeholder,
+      documentIndex: documentIndex,
+      placeholderLength: placeholderLength,
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -249,9 +266,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
     _uploadingImages.add(task);
 
-    // 监听进度并更新占位符
+    // 监听进度（不再更新占位符文本，只在控制台输出）
     progressController.stream.listen((percent) {
-      _updatePlaceholderProgress(taskId, percent);
+      debugPrint('Uploading $filename: $percent%');
     }, onError: (e) {
       debugPrint('Progress stream error: $e');
     });
@@ -260,7 +277,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   /// 上传图片并处理进度
   Future<void> _uploadImageWithProgress({
     required String taskId,
-    required String placeholder,
+    required int documentIndex,
+    required int placeholderLength,
     required String filename,
     required Uint8List bytes,
     required String mimeType,
@@ -278,16 +296,17 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         },
       );
 
-      // 获取最新的占位符（因为可能在进度更新时已被修改）
+      // 获取任务信息
       final task = _uploadingImages.firstWhere(
         (t) => t.id == taskId,
         orElse: () => throw Exception('Upload task not found: $taskId'),
       );
-      final currentPlaceholder = task.placeholder;
 
       if (result == null) {
-        _replacePlaceholder(
-          currentPlaceholder,
+        // 替换为错误信息
+        _quillController.document.replace(
+          documentIndex,
+          placeholderLength,
           '![上传失败：$filename (服务器无响应)]()',
         );
         return;
@@ -299,8 +318,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       final height = result['height'] as int?;
 
       if (url == null) {
-        _replacePlaceholder(
-          currentPlaceholder,
+        _quillController.document.replace(
+          documentIndex,
+          placeholderLength,
           '![上传失败：$filename (无URL)]()',
         );
         return;
@@ -321,122 +341,36 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           'alt="$baseName" '
           'src="$fullUrl" />';
 
-      _replacePlaceholder(currentPlaceholder, imgHtml);
+      // 直接使用记录的位置替换
+      _quillController.document.replace(
+        documentIndex,
+        placeholderLength,
+        imgHtml,
+      );
 
       // 清理缓存
       _clipboardImageCache.remove(filename);
     } catch (e) {
-      // 尝试用 taskId 查找任务
+      // 尝试查找任务
       final task = _uploadingImages.cast<_UploadingImageTask?>().firstWhere(
         (t) => t?.id == taskId,
         orElse: () => null,
       );
-      final currentPlaceholder = task?.placeholder ?? placeholder;
       
-      _replacePlaceholder(
-        currentPlaceholder,
-        '![上传失败：$filename ($e)]()',
-      );
+      // 替换为错误信息
+      if (task != null) {
+        _quillController.document.replace(
+          task.documentIndex,
+          task.placeholderLength,
+          '![上传失败：$filename ($e)]()',
+        );
+      }
     } finally {
       if (!progressController.isClosed) {
         progressController.close();
       }
       _uploadingImages.removeWhere((t) => t.id == taskId);
     }
-  }
-
-  /// 更新占位符中的进度百分比
-  void _updatePlaceholderProgress(
-    String taskId,
-    int percent,
-  ) {
-    // 通过 taskId 查找任务
-    final task = _uploadingImages.firstWhere(
-      (t) => t.id == taskId,
-      orElse: () => throw Exception('Task not found: $taskId'),
-    );
-    
-    final oldPlaceholder = task.placeholder;
-    final filename = task.filename;
-    
-    // 构建新的占位符文本
-    final newPlaceholder = '![正在上传图片：$filename ($percent%)]()';
-
-    final plainText = _quillController.document.toPlainText();
-    var index = plainText.indexOf(oldPlaceholder);
-
-    // 如果找不到，尝试用正则匹配
-    if (index < 0) {
-      final escapedFilename = RegExp.escape(filename);
-      final pattern = RegExp(r'!\[正在上传图片：' + escapedFilename + r' \(\d+%\)\]\(\)');
-      final match = pattern.firstMatch(plainText);
-      if (match != null) {
-        index = match.start;
-        final matchedLength = match.group(0)!.length;
-        _quillController.document.replace(
-          index,
-          matchedLength,
-          newPlaceholder,
-        );
-        task.placeholder = newPlaceholder;
-        return;
-      }
-      debugPrint('Could not find placeholder for progress update: $oldPlaceholder');
-      return;
-    }
-
-    // 执行替换
-    _quillController.document.replace(
-      index,
-      oldPlaceholder.length,
-      newPlaceholder,
-    );
-
-    // 更新任务列表中的占位符引用
-    task.placeholder = newPlaceholder;
-  }
-
-  /// 替换占位符为最终内容
-  void _replacePlaceholder(String placeholder, String replacement) {
-    // 获取文档纯文本
-    final plainText = _quillController.document.toPlainText();
-    
-    // 尝试直接查找
-    var index = plainText.indexOf(placeholder);
-    
-    // 如果找不到，尝试从 placeholder 中提取文件名，用正则匹配
-    if (index < 0) {
-      // 尝试提取文件名
-      final filenameExtractMatch = RegExp(r'!\[正在上传图片：([^)]+)\(\d+%\)\]\(\)')
-          .firstMatch(placeholder);
-      if (filenameExtractMatch != null) {
-        final filename = filenameExtractMatch.group(1)!;
-        // 移除进度百分比部分，只保留文件名
-        final cleanFilename = filename.replaceAll(RegExp(r' \(\d+%\)$'), '');
-        final escapedFilename = RegExp.escape(cleanFilename);
-        // 在文档中查找匹配的占位符
-        final pattern = RegExp(r'!\[正在上传图片：' + escapedFilename + r' \(\d+%\)\]\(\)');
-        final match = pattern.firstMatch(plainText);
-        if (match != null) {
-          index = match.start;
-          final matchedLength = match.group(0)!.length;
-          _quillController.document.replace(
-            index,
-            matchedLength,
-            replacement,
-          );
-          return;
-        }
-      }
-      debugPrint('Could not find placeholder: $placeholder');
-      return;
-    }
-
-    _quillController.document.replace(
-      index,
-      placeholder.length,
-      replacement,
-    );
   }
 
   Future<void> _submit() async {
