@@ -694,7 +694,8 @@ class Api extends BaseConnect {
 
     // 监听完成
     xhr.onLoad.listen((event) {
-      if (xhr.status == 200) {
+      // 200 OK 和 201 Created 都视为成功
+      if (xhr.status == 200 || xhr.status == 201) {
         try {
           final response = jsonDecode(xhr.responseText ?? '[]') as List;
           if (response.isNotEmpty) {
