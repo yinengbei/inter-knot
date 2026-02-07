@@ -26,6 +26,7 @@ class _UploadingImageTask {
   final int documentIndex; // 在文档中的位置
   final int placeholderLength; // 占位符长度
   final String placeholder; // 占位符文本
+  final String placeholderToken; // 唯一占位符标记
   final String filename;
   final Uint8List bytes;
   final String mimeType;
@@ -37,6 +38,7 @@ class _UploadingImageTask {
     required this.documentIndex,
     required this.placeholderLength,
     required this.placeholder,
+    required this.placeholderToken,
     required this.filename,
     required this.bytes,
     required this.mimeType,
@@ -228,7 +230,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     // 生成唯一ID
     final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
 
-    final placeholder = '![正在上传图片：$filename (0%)](uploading:$taskId)';
+    final placeholderToken = 'uploading:$taskId';
+    final placeholder = '![正在上传图片：$filename (0%)]($placeholderToken)';
 
     // 记录插入位置
     final documentIndex = insertIndex;
@@ -256,6 +259,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       documentIndex: documentIndex,
       placeholderLength: placeholderLength,
       placeholder: placeholder,
+      placeholderToken: placeholderToken,
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -391,25 +395,45 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final text = _quillController.document.toPlainText();
     if (text.isEmpty) return null;
 
-    final first = text.indexOf(task.placeholder);
-    if (first == -1) return null;
+    int? bestIndex;
+    var bestDistance = 1 << 30;
 
-    var bestIndex = first;
-    var bestDistance = (first - task.documentIndex).abs();
-    var start = first + task.placeholder.length;
-    while (true) {
-      final pos = text.indexOf(task.placeholder, start);
-      if (pos == -1) break;
-      final distance = (pos - task.documentIndex).abs();
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = pos;
+    // 优先根据唯一 token 定位
+    final token = task.placeholderToken;
+    if (token.isNotEmpty) {
+      var start = 0;
+      while (true) {
+        final pos = text.indexOf(token, start);
+        if (pos == -1) break;
+        final candidateStart = pos - (task.placeholderLength - token.length);
+        final safeStart = candidateStart < 0 ? pos : candidateStart;
+        final distance = (safeStart - task.documentIndex).abs();
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = safeStart;
+        }
+        start = pos + token.length;
       }
-      start = pos + task.placeholder.length;
     }
 
+    // 回退：根据完整占位符定位
+    if (bestIndex == null) {
+      var start = 0;
+      while (true) {
+        final pos = text.indexOf(task.placeholder, start);
+        if (pos == -1) break;
+        final distance = (pos - task.documentIndex).abs();
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = pos;
+        }
+        start = pos + task.placeholder.length;
+      }
+    }
+
+    if (bestIndex == null) return null;
     final docLength = _quillController.document.length;
-    return bestIndex.clamp(0, docLength);
+    return bestIndex!.clamp(0, docLength);
   }
 
   Future<void> _submit() async {
