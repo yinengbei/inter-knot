@@ -1,27 +1,7 @@
 import 'package:inter_knot/helpers/parse_html.dart';
+import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
-
-String _normalizeMarkdown(String input) {
-  var out = input;
-  out = out.replaceAll(
-    RegExp(r'<div class="web-selectable-region-context-menu"[^>]*></div>'),
-    '',
-  );
-  out = out.replaceAllMapped(
-    RegExp(r'\\([\\`*_{}\[\]()#+\-.!])'),
-    (m) => m[1]!,
-  );
-  out = out.replaceAllMapped(
-    RegExp(r'!\[([^\]]*)\]\(\[([^\]]+)\]\(([^)\s]+)\)\)\)+(?=\s|$)'),
-    (m) => '![${m[1]}](${m[3]})',
-  );
-  out = out.replaceAllMapped(
-    RegExp(r'!\[([^\]]*)\]\(([^)\s]+)\)\)(?=\s|$)'),
-    (m) => '![${m[1]}](${m[2]})',
-  );
-  return out;
-}
 
 class CommentModel {
   final AuthorModel author;
@@ -47,7 +27,7 @@ class CommentModel {
   factory CommentModel.fromJson(Map<String, dynamic> json) {
     // 处理 content 字段（可能是 Markdown 或 HTML）
     final content = json['content'] as String? ?? json['bodyHTML'] as String? ?? '';
-    final normalized = _normalizeMarkdown(content);
+    final normalized = normalizeMarkdown(content);
     final (:cover, :html) = parseHtml(normalized, true);
     
     return CommentModel(

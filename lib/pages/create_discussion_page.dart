@@ -12,6 +12,7 @@ import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 import 'package:markdown_quill/markdown_quill.dart';
+import 'package:inter_knot/helpers/normalize_markdown.dart';
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key});
@@ -288,7 +289,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   Future<void> _submit() async {
     final title = titleController.text.trim();
     final delta = _quillController.document.toDelta();
-    final markdownText = DeltaToMarkdown().convert(delta);
+    final markdownText = normalizeMarkdown(DeltaToMarkdown().convert(delta));
     final coverInput = coverController.text.trim();
     final cover = coverInput.isEmpty
         ? _extractFirstImageUrl(markdownText) ?? ''
