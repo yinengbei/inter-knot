@@ -262,19 +262,20 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   int? _findTokenIndex(String token) {
     final delta = _quillController.document.toDelta();
-    var index = 0;
+    final buffer = StringBuffer();
     for (final op in delta.toList()) {
       final data = op.data;
       if (data is String) {
-        final pos = data.indexOf(token);
-        if (pos != -1) return index + pos;
-        index += data.length;
+        buffer.write(data);
       } else {
-        // embeds count as length 1
-        index += 1;
+        // embeds count as length 1 in document indices
+        buffer.write('\uFFFC');
       }
     }
-    return null;
+    final text = buffer.toString();
+    final pos = text.indexOf(token);
+    if (pos == -1) return null;
+    return pos;
   }
 
   Future<void> _submit() async {
