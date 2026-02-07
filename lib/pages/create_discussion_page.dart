@@ -398,7 +398,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     if (_isValidImageUrl(markdownUrl)) return markdownUrl;
 
     final htmlMatch =
-        RegExp(r'src=["\']([^"\']+)["\']').firstMatch(text);
+        RegExp(r"src=['\"]([^'\"]+)['\"]").firstMatch(text);
     final htmlUrl = htmlMatch?.group(1);
     if (_isValidImageUrl(htmlUrl)) return htmlUrl;
 
