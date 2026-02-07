@@ -8,12 +8,6 @@ import 'package:html/parser.dart';
   if (!isComment) {
     final img = document.querySelector('img');
     final cover = img?.attributes['src'];
-    img?.remove();
-    var parent = img?.parent;
-    while (parent != null && parent.nodes.isEmpty) {
-      parent.remove();
-      parent = parent.parent;
-    }
     return (html: document.outerHtml, cover: cover);
   }
   document.querySelectorAll('.email-hidden-toggle').forEach((e) => e.remove());
