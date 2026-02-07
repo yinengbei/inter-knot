@@ -25,6 +25,7 @@ class _UploadingImageTask {
   final String id; // 唯一标识符
   final int documentIndex; // 在文档中的位置
   final int placeholderLength; // 占位符长度
+  final String placeholder; // 占位符文本
   final String filename;
   final Uint8List bytes;
   final String mimeType;
@@ -35,6 +36,7 @@ class _UploadingImageTask {
     required this.id,
     required this.documentIndex,
     required this.placeholderLength,
+    required this.placeholder,
     required this.filename,
     required this.bytes,
     required this.mimeType,
@@ -172,19 +174,18 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           // 缓存图片数据
           _clipboardImageCache[filename] = bytes;
 
-          // 在光标位置插入占位符
+          // 在光标位置插入占位符并开始上传
           final placeholder = '![正在上传图片：$filename (0%)]()';
           final index = _quillController.selection.start;
-          _quillController.document.insert(index, placeholder);
-
-          // 移动光标到占位符后
-          _quillController.updateSelection(
-            TextSelection.collapsed(offset: index + placeholder.length),
-            quill.ChangeSource.local,
-          );
 
           // 开始上传
-          _startImageUpload(placeholder, filename, bytes, mimeType);
+          _startImageUpload(
+            placeholder: placeholder,
+            insertIndex: index,
+            filename: filename,
+            bytes: bytes,
+            mimeType: mimeType,
+          );
         } catch (e) {
           debugPrint('Failed to handle pasted image: $e');
           Get.rawSnackbar(message: '图片处理失败: $e');
@@ -218,19 +219,20 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   /// 开始图片上传
-  void _startImageUpload(
-    String placeholder,
-    String filename,
-    Uint8List bytes,
-    String mimeType,
-  ) {
+  void _startImageUpload({
+    required String placeholder,
+    required int insertIndex,
+    required String filename,
+    required Uint8List bytes,
+    required String mimeType,
+  }) {
     final progressController = StreamController<int>.broadcast();
-    
+
     // 生成唯一ID
     final taskId = '${DateTime.now().millisecondsSinceEpoch}_${_uploadingImages.length}';
 
     // 记录插入位置
-    final documentIndex = _quillController.selection.start;
+    final documentIndex = insertIndex;
     final placeholderLength = placeholder.length;
 
     // 插入占位符
@@ -245,8 +247,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     // 创建上传任务
     final uploadFuture = _uploadImageWithProgress(
       taskId: taskId,
-      documentIndex: documentIndex,
-      placeholderLength: placeholderLength,
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -257,6 +257,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       id: taskId,
       documentIndex: documentIndex,
       placeholderLength: placeholderLength,
+      placeholder: placeholder,
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -277,8 +278,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   /// 上传图片并处理进度
   Future<void> _uploadImageWithProgress({
     required String taskId,
-    required int documentIndex,
-    required int placeholderLength,
     required String filename,
     required Uint8List bytes,
     required String mimeType,
@@ -304,9 +303,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
       if (result == null) {
         // 替换为错误信息
+        final replaceIndex = _findPlaceholderIndex(task);
         _quillController.document.replace(
-          documentIndex,
-          placeholderLength,
+          replaceIndex,
+          task.placeholderLength,
           '![上传失败：$filename (服务器无响应)]()',
         );
         return;
@@ -318,9 +318,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       final height = result['height'] as int?;
 
       if (url == null) {
+        final replaceIndex = _findPlaceholderIndex(task);
         _quillController.document.replace(
-          documentIndex,
-          placeholderLength,
+          replaceIndex,
+          task.placeholderLength,
           '![上传失败：$filename (无URL)]()',
         );
         return;
@@ -342,9 +343,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           'src="$fullUrl" />';
 
       // 直接使用记录的位置替换
+      final replaceIndex = _findPlaceholderIndex(task);
       _quillController.document.replace(
-        documentIndex,
-        placeholderLength,
+        replaceIndex,
+        task.placeholderLength,
         imgHtml,
       );
 
@@ -359,8 +361,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       
       // 替换为错误信息
       if (task != null) {
+        final replaceIndex = _findPlaceholderIndex(task);
         _quillController.document.replace(
-          task.documentIndex,
+          replaceIndex,
           task.placeholderLength,
           '![上传失败：$filename ($e)]()',
         );
@@ -371,6 +374,20 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
       _uploadingImages.removeWhere((t) => t.id == taskId);
     }
+  }
+
+  int _findPlaceholderIndex(_UploadingImageTask task) {
+    final text = _quillController.document.toPlainText();
+    if (text.isEmpty) return task.documentIndex;
+
+    final start = task.documentIndex.clamp(0, text.length);
+    final idxFromStart = text.indexOf(task.placeholder, start);
+    if (idxFromStart != -1) return idxFromStart;
+
+    final idx = text.indexOf(task.placeholder);
+    if (idx != -1) return idx;
+
+    return task.documentIndex.clamp(0, text.length);
   }
 
   Future<void> _submit() async {
