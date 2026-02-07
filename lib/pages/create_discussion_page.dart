@@ -304,26 +304,27 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       if (result == null) {
         // 替换为错误信息
         final replaceIndex = _findPlaceholderIndex(task);
-        _quillController.document.replace(
-          replaceIndex,
-          task.placeholderLength,
-          '![上传失败：$filename (服务器无响应)]()',
-        );
+        if (replaceIndex != null) {
+          _quillController.document.replace(
+            replaceIndex,
+            task.placeholderLength,
+            '![上传失败：$filename (服务器无响应)]()',
+          );
+        }
         return;
       }
 
       // 从服务器响应获取数据
       final url = result['url'] as String?;
-      final width = result['width'] as int?;
-      final height = result['height'] as int?;
-
       if (url == null) {
         final replaceIndex = _findPlaceholderIndex(task);
-        _quillController.document.replace(
-          replaceIndex,
-          task.placeholderLength,
-          '![上传失败：$filename (无URL)]()',
-        );
+        if (replaceIndex != null) {
+          _quillController.document.replace(
+            replaceIndex,
+            task.placeholderLength,
+            '![上传失败：$filename (无URL)]()',
+          );
+        }
         return;
       }
 
@@ -335,20 +336,23 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           ? filename.substring(0, filename.lastIndexOf('.'))
           : filename;
 
-      // 构建 HTML img 标签
-      final imgHtml = '<img '
-          '${width != null ? 'width="$width" ' : ''}'
-          '${height != null ? 'height="$height" ' : ''}'
-          'alt="$baseName" '
-          'src="$fullUrl" />';
+      // 使用 Markdown 图片语法，避免 HTML 被截断或污染
+      final imageMarkdown = '![$baseName]($fullUrl)';
 
-      // 直接使用记录的位置替换
       final replaceIndex = _findPlaceholderIndex(task);
-      _quillController.document.replace(
-        replaceIndex,
-        task.placeholderLength,
-        imgHtml,
-      );
+      if (replaceIndex == null) {
+        // 占位符找不到时，避免误替换，直接追加到末尾
+        _quillController.document.insert(
+          _quillController.document.length - 1,
+          imageMarkdown,
+        );
+      } else {
+        _quillController.document.replace(
+          replaceIndex,
+          task.placeholderLength,
+          imageMarkdown,
+        );
+      }
 
       // 清理缓存
       _clipboardImageCache.remove(filename);
@@ -362,11 +366,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       // 替换为错误信息
       if (task != null) {
         final replaceIndex = _findPlaceholderIndex(task);
-        _quillController.document.replace(
-          replaceIndex,
-          task.placeholderLength,
-          '![上传失败：$filename ($e)]()',
-        );
+        if (replaceIndex != null) {
+          _quillController.document.replace(
+            replaceIndex,
+            task.placeholderLength,
+            '![上传失败：$filename ($e)]()',
+          );
+        }
       }
     } finally {
       if (!progressController.isClosed) {
@@ -376,39 +382,29 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
   }
 
-  int _findPlaceholderIndex(_UploadingImageTask task) {
-    final delta = _quillController.document.toDelta();
-    var index = 0;
-    int? bestIndex;
-    var bestDistance = 1 << 30;
+  int? _findPlaceholderIndex(_UploadingImageTask task) {
+    final text = _quillController.document.toPlainText();
+    if (text.isEmpty) return null;
 
-    for (final op in delta.toList()) {
-      final insert = op.data;
-      if (insert is String) {
-        var searchStart = 0;
-        while (true) {
-          final pos = insert.indexOf(task.placeholder, searchStart);
-          if (pos == -1) break;
-          final absolute = index + pos;
-          final distance = (absolute - task.documentIndex).abs();
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = absolute;
-          }
-          searchStart = pos + task.placeholder.length;
-        }
-        index += insert.length;
-      } else {
-        // embeds count as length 1 in document indices
-        index += 1;
+    final first = text.indexOf(task.placeholder);
+    if (first == -1) return null;
+
+    var bestIndex = first;
+    var bestDistance = (first - task.documentIndex).abs();
+    var start = first + task.placeholder.length;
+    while (true) {
+      final pos = text.indexOf(task.placeholder, start);
+      if (pos == -1) break;
+      final distance = (pos - task.documentIndex).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = pos;
       }
+      start = pos + task.placeholder.length;
     }
 
     final docLength = _quillController.document.length;
-    if (bestIndex != null) {
-      return bestIndex!.clamp(0, docLength);
-    }
-    return task.documentIndex.clamp(0, docLength);
+    return bestIndex.clamp(0, docLength);
   }
 
   Future<void> _submit() async {
