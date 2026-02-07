@@ -516,6 +516,14 @@ class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
   @override
   Widget build(BuildContext context) {
     final discussion = widget.discussion;
+    assert(() {
+      debugPrint(
+        'DiscussionPage uses bodyHTML for render. rawBodyText='
+        '${discussion.rawBodyText.length} chars, bodyHTML='
+        '${discussion.bodyHTML.length} chars',
+      );
+      return true;
+    }());
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,

@@ -9,6 +9,11 @@ import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:markdown/markdown.dart' as md;
 
+String _shortenForLog(String input, [int max = 400]) {
+  if (input.length <= max) return input;
+  return '${input.substring(0, max)}...<${input.length} chars>';
+}
+
 class DiscussionModel {
   String title;
   String bodyHTML;
@@ -97,15 +102,23 @@ class DiscussionModel {
       }
     }
     
-    rawBody = normalizeMarkdown(rawBody);
+    final normalized = normalizeMarkdown(rawBody);
 
     // Convert Markdown to HTML
+    if (kDebugMode) {
+      debugPrint('Discussion raw text: ${_shortenForLog(rawBody)}');
+      debugPrint('Discussion normalized: ${_shortenForLog(normalized)}');
+    }
+
     final htmlBody = md.markdownToHtml(
-      rawBody,
+      normalized,
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
 
     final (:cover, :html) = parseHtml(htmlBody);
+    if (kDebugMode) {
+      debugPrint('Discussion HTML: ${_shortenForLog(html)}');
+    }
     
     // 处理封面图: 优先取 json['cover']，如果没有则尝试从 parseHtml 获取
     String? coverUrl;
@@ -132,7 +145,7 @@ class DiscussionModel {
       title: json['title'] is String ? json['title'] as String : (json['title']?.toString() ?? ''),
       bodyHTML: html,
       cover: coverUrl ?? cover, // 优先使用 Strapi 字段，其次是内容里的图
-      rawBodyText: rawBody,
+      rawBodyText: normalized,
       // number: ... Removed
       id: json['documentId'] as String? ?? json['id']?.toString() ?? '', // 优先 documentId
       createdAt: json['createdAt'] is String ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
