@@ -248,9 +248,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final index = _findTokenIndex(token);
     if (index == null) return;
 
+    // 先删除 token，再插入 HTML，避免转义导致的替换错位
     _quillController.replaceText(
       index,
       token.length,
+      '',
+      TextSelection.collapsed(offset: index),
+    );
+    _quillController.replaceText(
+      index,
+      0,
       replacement,
       TextSelection.collapsed(offset: index + replacement.length),
     );
