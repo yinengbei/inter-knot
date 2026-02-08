@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api_exception.dart';
@@ -16,9 +14,6 @@ import 'package:inter_knot/models/pagination.dart';
 import 'package:inter_knot/models/release.dart';
 import 'package:inter_knot/models/report_comment.dart';
 import 'package:inter_knot/pages/login_page.dart';
-
-// Conditional import for web platform
-import 'dart:html' as html;
 
 class AuthApi extends GetConnect {
   @override
@@ -390,24 +385,35 @@ class Api extends BaseConnect {
     required String title,
     required String text,
     required String slug,
-    String? coverId,
+    dynamic coverId, // String or List<String>
     String? authorId,
-  }) =>
-      post(
-        '/api/articles',
-        {
-          'data': {
-            'title': title,
-            'text': text,
-            'slug': slug,
-            'publishedAt': DateTime.now().toIso8601String(),
-            if (coverId != null && coverId.isNotEmpty)
-              'cover': _coerceId(coverId),
-            if (authorId != null && authorId.isNotEmpty)
-              'author': _coerceId(authorId),
-          },
-        },
-      );
+  }) {
+    final Map<String, dynamic> data = {
+      'title': title,
+      'text': text,
+      'slug': slug,
+      'publishedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (coverId != null) {
+      if (coverId is String && coverId.isNotEmpty) {
+        data['cover'] = _coerceId(coverId);
+      } else if (coverId is List && coverId.isNotEmpty) {
+        data['cover'] = coverId
+            .map((e) => e is String ? _coerceId(e) : e)
+            .toList();
+      }
+    }
+
+    if (authorId != null && authorId.isNotEmpty) {
+      data['author'] = _coerceId(authorId);
+    }
+
+    return post(
+      '/api/articles',
+      {'data': data},
+    );
+  }
 
   Future<String?> findAuthorIdByName(String name) async {
     final res = await get(
@@ -649,80 +655,42 @@ class Api extends BaseConnect {
     }
   }
 
-  /// Web 平台图片上传，带进度回调
+  /// 通用图片上传，支持所有平台
   ///
   /// [bytes] - 图片二进制数据
   /// [filename] - 文件名
   /// [mimeType] - MIME 类型，如 'image/png'
   /// [onProgress] - 进度回调，参数为 0-100
-  ///
-  /// 返回上传后的文件信息 Map，包含：
-  /// - url: String - 图片相对路径
-  /// - width: int - 图片宽度
-  /// - height: int - 图片高度
-  /// - name: String - 文件名
-  Future<Map<String, dynamic>?> uploadImageWeb({
-    required Uint8List bytes,
+  Future<Map<String, dynamic>?> uploadImage({
+    required List<int> bytes,
     required String filename,
     required String mimeType,
     required void Function(int percent) onProgress,
   }) async {
-    final completer = Completer<Map<String, dynamic>?>();
+    final form = FormData({
+      'files': MultipartFile(bytes, filename: filename, contentType: mimeType),
+    });
 
-    // 创建 FormData
-    final formData = html.FormData();
-    final blob = html.Blob([bytes], mimeType);
-    formData.appendBlob('files', blob, filename);
+    final res = await post(
+      '/api/upload',
+      form,
+      uploadProgress: (percent) => onProgress((percent * 100).round()),
+    );
 
-    // 创建 XMLHttpRequest
-    final xhr = html.HttpRequest();
-    xhr.open('POST', '${httpClient.baseUrl}/api/upload');
-
-    // 添加认证头
-    final token = box.read<String>('access_token') ?? '';
-    if (token.isNotEmpty) {
-      xhr.setRequestHeader('Authorization', 'Bearer $token');
+    if (res.hasError) {
+      throw ApiException(res.statusText ?? 'Upload failed',
+          statusCode: res.statusCode);
     }
 
-    // 监听上传进度
-    xhr.upload.onProgress.listen((event) {
-      if (event.lengthComputable) {
-        final loaded = event.loaded ?? 0;
-        final total = event.total ?? 1;
-        final percent = ((loaded / total) * 100).round();
-        onProgress(percent);
-      }
-    });
+    final body = res.body;
+    if (body is List && body.isNotEmpty) {
+      return body.first as Map<String, dynamic>;
+    } else if (body is Map<String, dynamic>) {
+      // Sometimes Strapi returns a single object depending on plugin config?
+      // Standard upload returns array.
+      return body;
+    }
 
-    // 监听完成
-    xhr.onLoad.listen((event) {
-      // 200 OK 和 201 Created 都视为成功
-      if (xhr.status == 200 || xhr.status == 201) {
-        try {
-          final response = jsonDecode(xhr.responseText ?? '[]') as List;
-          if (response.isNotEmpty) {
-            completer.complete(response.first as Map<String, dynamic>);
-          } else {
-            completer.completeError('Upload failed: empty response');
-          }
-        } catch (e) {
-          completer.completeError('Parse error: $e');
-        }
-      } else {
-        completer.completeError('HTTP ${xhr.status}: ${xhr.statusText}');
-      }
-    });
-
-    // 监听错误
-    xhr.onError.listen((event) {
-      completer.completeError('Network error');
-    });
-
-    xhr.onTimeout.listen((event) {
-      completer.completeError('Request timeout');
-    });
-
-    xhr.send(formData);
-    return completer.future;
+    return null;
   }
 }
