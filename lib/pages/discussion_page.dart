@@ -1045,19 +1045,25 @@ class _CoverState extends State<Cover> {
             ),
           ),
           if (covers.length > 1)
-            Positioned(
+            Positioned.fill(
               left: 8,
-              child: _NavButton(
-                icon: Icons.chevron_left,
-                onTap: () => _goToPage(_currentIndex - 1, covers.length),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _NavButton(
+                  icon: Icons.chevron_left,
+                  onTap: () => _goToPage(_currentIndex - 1, covers.length),
+                ),
               ),
             ),
           if (covers.length > 1)
-            Positioned(
+            Positioned.fill(
               right: 8,
-              child: _NavButton(
-                icon: Icons.chevron_right,
-                onTap: () => _goToPage(_currentIndex + 1, covers.length),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _NavButton(
+                  icon: Icons.chevron_right,
+                  onTap: () => _goToPage(_currentIndex + 1, covers.length),
+                ),
               ),
             ),
           Positioned(

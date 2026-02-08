@@ -153,26 +153,16 @@ class DiscussionModel {
       if (url != null) parsedCovers.add(url);
     }
 
-    final bodyImages = <String>[];
-    final fragment = parseFragment(htmlBody);
-    for (final img in fragment.querySelectorAll('img')) {
-      final src = img.attributes['src'];
-      final url = normalizeUrl(src);
-      if (url != null) bodyImages.add(url);
-    }
-
     final List<String> covers = [];
-    final firstCover =
-        (parsedCovers.isNotEmpty ? parsedCovers.first : null) ??
-            (bodyImages.isNotEmpty ? bodyImages.first : null) ??
-            normalizeUrl(cover);
-    if (firstCover != null) covers.add(firstCover);
 
-    for (final url in bodyImages) {
-      if (!covers.contains(url)) covers.add(url);
-    }
-    for (final url in parsedCovers.skip(1)) {
-      if (!covers.contains(url)) covers.add(url);
+    if (parsedCovers.isNotEmpty) {
+      covers.addAll(parsedCovers);
+    } else {
+      final fragment = parseFragment(htmlBody);
+      final firstImg = fragment.querySelector('img');
+      final firstUrl = normalizeUrl(firstImg?.attributes['src']) ??
+          normalizeUrl(cover);
+      if (firstUrl != null) covers.add(firstUrl);
     }
 
     final commentsJson = json['comments'] as Map<String, dynamic>?;
