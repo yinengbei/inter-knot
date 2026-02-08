@@ -401,8 +401,10 @@ class Api extends BaseConnect {
             'text': text,
             'slug': slug,
             'publishedAt': DateTime.now().toIso8601String(),
-            if (coverId != null && coverId.isNotEmpty) 'cover': coverId,
-            if (authorId != null && authorId.isNotEmpty) 'author': authorId,
+            if (coverId != null && coverId.isNotEmpty)
+              'cover': _coerceId(coverId),
+            if (authorId != null && authorId.isNotEmpty)
+              'author': _coerceId(authorId),
           },
         },
       );

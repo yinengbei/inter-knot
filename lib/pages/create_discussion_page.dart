@@ -10,6 +10,7 @@ import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:inter_knot/constants/api_config.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 import 'package:inter_knot/helpers/normalize_markdown.dart';
@@ -34,6 +35,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   /// 用于取消订阅粘贴事件
   html.EventListener? _pasteEventListener;
+  final Map<String, String> _uploadedFileIdByUrl = {};
 
   String _slugify(String input) {
     final normalized = input
@@ -107,6 +109,26 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
     }
     return false;
+  }
+
+  String? _normalizeFileUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return '${ApiConfig.baseUrl}$url';
+    return '${ApiConfig.baseUrl}/$url';
+  }
+
+  String? _resolveCoverId(String? coverInputOrUrl) {
+    if (coverInputOrUrl == null || coverInputOrUrl.trim().isEmpty) return null;
+    final trimmed = coverInputOrUrl.trim();
+    if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+      return trimmed;
+    }
+    final normalized = _normalizeFileUrl(trimmed);
+    if (normalized != null) {
+      return _uploadedFileIdByUrl[normalized] ?? _uploadedFileIdByUrl[trimmed];
+    }
+    return _uploadedFileIdByUrl[trimmed];
   }
 
   /// 设置粘贴事件监听
@@ -229,8 +251,14 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         return;
       }
 
-      // 构建完整 URL（已经是完整 URL，无需拼接）
-      final fullUrl = url;
+      final fullUrl = _normalizeFileUrl(url) ?? url;
+
+      final rawId = result['id'] ?? result['documentId'];
+      if (rawId != null) {
+        final id = rawId.toString();
+        _uploadedFileIdByUrl[fullUrl] = id;
+        _uploadedFileIdByUrl[url] = id;
+      }
 
       // 从文件名提取基础名（不含扩展名）
       final baseName = filename.contains('.')
@@ -291,9 +319,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     final delta = _quillController.document.toDelta();
     final markdownText = normalizeMarkdown(DeltaToMarkdown().convert(delta));
     final coverInput = coverController.text.trim();
-    final cover = coverInput.isEmpty
-        ? _extractFirstImageUrl(markdownText) ?? ''
-        : coverInput;
+    final firstImageUrl = _extractFirstImageUrl(markdownText);
+    final cover = coverInput.isEmpty ? (firstImageUrl ?? '') : coverInput;
+    final coverId = _resolveCoverId(cover);
 
     if (title.isEmpty) {
       Get.rawSnackbar(message: '标题不能为空');
@@ -301,6 +329,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
     if (_quillController.document.isEmpty()) {
       Get.rawSnackbar(message: '内容不能为空');
+      return;
+    }
+    if (coverInput.isEmpty && cover.isNotEmpty) {
+      coverController.text = cover;
+    }
+    if (cover.isNotEmpty && coverId == null) {
+      Get.rawSnackbar(message: '封面需为已上传图片');
       return;
     }
 
@@ -320,7 +355,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         title: title,
         text: markdownText,
         slug: slug,
-        coverId: cover.isEmpty ? null : cover,
+        coverId: coverId,
         authorId: authorId,
       );
 
@@ -335,7 +370,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             title: title,
             text: markdownText,
             slug: slug,
-            coverId: cover.isEmpty ? null : cover,
+            coverId: coverId,
             authorId: authorId,
           );
         }
