@@ -1,20 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:html/parser.dart' show parseFragment;
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/constants/api_config.dart';
-import 'package:inter_knot/helpers/parse_html.dart';
 import 'package:inter_knot/helpers/normalize_markdown.dart';
+import 'package:inter_knot/helpers/parse_html.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/pagination.dart';
-import 'package:html/parser.dart' show parseFragment;
 import 'package:markdown/markdown.dart' as md;
-
-String _shortenForLog(String input, [int max = 400]) {
-  if (input.length <= max) return input;
-  return '${input.substring(0, max)}...<${input.length} chars>';
-}
 
 class DiscussionModel {
   String title;
@@ -113,24 +108,16 @@ class DiscussionModel {
         }
       }
     }
-    
+
     final normalized = normalizeMarkdown(rawBody);
 
     // Convert Markdown to HTML
-    if (kDebugMode) {
-      debugPrint('Discussion raw text: ${_shortenForLog(rawBody)}');
-      debugPrint('Discussion normalized: ${_shortenForLog(normalized)}');
-    }
-
     final htmlBody = md.markdownToHtml(
       normalized,
       extensionSet: md.ExtensionSet.gitHubWeb,
     );
 
     final (:cover, :html) = parseHtml(htmlBody);
-    if (kDebugMode) {
-      debugPrint('Discussion HTML: ${_shortenForLog(html)}');
-    }
     final List<String> parsedCovers = [];
 
     String? normalizeUrl(String? url) {
@@ -160,8 +147,8 @@ class DiscussionModel {
     } else {
       final fragment = parseFragment(htmlBody);
       final firstImg = fragment.querySelector('img');
-      final firstUrl = normalizeUrl(firstImg?.attributes['src']) ??
-          normalizeUrl(cover);
+      final firstUrl =
+          normalizeUrl(firstImg?.attributes['src']) ?? normalizeUrl(cover);
       if (firstUrl != null) covers.add(firstUrl);
     }
 

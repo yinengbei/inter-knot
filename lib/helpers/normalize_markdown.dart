@@ -2,7 +2,7 @@ String normalizeMarkdown(String input) {
   var out = input;
   // Remove stray selectable-region context menu divs captured from web.
   out = out.replaceAll(
-    RegExp(r'<div class="web-selectable-region-context-menu"[^>]*></div>'),
+    RegExp('<div class="web-selectable-region-context-menu"[^>]*></div>'),
     '',
   );
   // Unescape common markdown escapes that break image parsing.

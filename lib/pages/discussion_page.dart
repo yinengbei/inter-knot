@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:get/get.dart';
@@ -548,14 +547,6 @@ class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
   @override
   Widget build(BuildContext context) {
     final discussion = widget.discussion;
-    assert(() {
-      debugPrint(
-        'DiscussionPage uses bodyHTML for render. rawBodyText='
-        '${discussion.rawBodyText.length} chars, bodyHTML='
-        '${discussion.bodyHTML.length} chars',
-      );
-      return true;
-    }());
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -576,10 +567,10 @@ class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
                 child: HtmlWidget(
                   discussion.bodyHTML,
                   textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 16,
-                        fontFamily: 'ZhCn',
-                        fontFamilyFallback: const ['ZhCn'],
-                      ),
+                    fontSize: 16,
+                    fontFamily: 'ZhCn',
+                    fontFamilyFallback: const ['ZhCn'],
+                  ),
                   onTapUrl: (url) {
                     launchUrlString(url);
                     return true;
@@ -987,61 +978,43 @@ class _CoverState extends State<Cover> {
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          Listener(
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                final shiftPressed =
-                    HardwareKeyboard.instance.logicalKeysPressed
-                            .contains(LogicalKeyboardKey.shiftLeft) ||
-                        HardwareKeyboard.instance.logicalKeysPressed
-                            .contains(LogicalKeyboardKey.shiftRight);
-                if (!shiftPressed) return;
-                if (event.scrollDelta.dy == 0) return;
-                if (event.scrollDelta.dy > 0) {
-                  _goToPage(_currentIndex + 1, covers.length);
-                } else {
-                  _goToPage(_currentIndex - 1, covers.length);
-                }
-              }
-            },
-            child: ScrollConfiguration(
-              behavior: const _CoverScrollBehavior(),
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: covers.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final url = covers[index];
-                  return ClickRegion(
-                    onTap: () => launchUrlString(url),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: url,
-                        fit: BoxFit.cover,
-                        progressIndicatorBuilder: (context, url, p) {
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: p.totalSize == null
-                                  ? null
-                                  : p.downloaded / p.totalSize!,
-                            ),
-                          );
-                        },
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[800],
-                          child: const Icon(Icons.broken_image,
-                              color: Colors.white),
-                        ),
+          ScrollConfiguration(
+            behavior: const _CoverScrollBehavior(),
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: covers.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                final url = covers[index];
+                return ClickRegion(
+                  onTap: () => launchUrlString(url),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      progressIndicatorBuilder: (context, url, p) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: p.totalSize == null
+                                ? null
+                                : p.downloaded / p.totalSize!,
+                          ),
+                        );
+                      },
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[800],
+                        child:
+                            const Icon(Icons.broken_image, color: Colors.white),
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ),
           if (covers.length > 1)

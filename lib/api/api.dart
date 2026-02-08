@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api_exception.dart';
@@ -399,9 +399,8 @@ class Api extends BaseConnect {
       if (coverId is String && coverId.isNotEmpty) {
         data['cover'] = _coerceId(coverId);
       } else if (coverId is List && coverId.isNotEmpty) {
-        data['cover'] = coverId
-            .map((e) => e is String ? _coerceId(e) : e)
-            .toList();
+        data['cover'] =
+            coverId.map((e) => e is String ? _coerceId(e) : e).toList();
       }
     }
 

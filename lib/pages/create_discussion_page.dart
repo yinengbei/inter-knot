@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
@@ -11,9 +11,9 @@ import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
+import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
 import 'package:markdown_quill/markdown_quill.dart';
-import 'package:inter_knot/helpers/normalize_markdown.dart';
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key});
@@ -469,6 +469,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
   }
 
+  @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
     final isDesktop = screenW >= 600;
@@ -825,8 +826,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                     visualDensity: VisualDensity.compact,
                                     minLeadingWidth: 0,
                                     horizontalTitleGap: 8,
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(horizontal: 8),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                     selected: _selectedIndex == 0,
                                     onTap: () {
                                       setState(() {
@@ -841,8 +842,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                     visualDensity: VisualDensity.compact,
                                     minLeadingWidth: 0,
                                     horizontalTitleGap: 8,
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(horizontal: 8),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
                                     selected: _selectedIndex == 1,
                                     onTap: () {
                                       setState(() {
