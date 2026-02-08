@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:get/get.dart';
@@ -986,45 +987,79 @@ class _CoverState extends State<Cover> {
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          ScrollConfiguration(
-            behavior: const _CoverScrollBehavior(),
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: covers.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                final url = covers[index];
-                return ClickRegion(
-                  onTap: () => launchUrlString(url),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      progressIndicatorBuilder: (context, url, p) {
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: p.totalSize == null
-                                ? null
-                                : p.downloaded / p.totalSize!,
-                          ),
-                        );
-                      },
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[800],
-                        child:
-                            const Icon(Icons.broken_image, color: Colors.white),
+          Listener(
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent) {
+                final shiftPressed =
+                    HardwareKeyboard.instance.logicalKeysPressed
+                            .contains(LogicalKeyboardKey.shiftLeft) ||
+                        HardwareKeyboard.instance.logicalKeysPressed
+                            .contains(LogicalKeyboardKey.shiftRight);
+                if (!shiftPressed) return;
+                if (event.scrollDelta.dy == 0) return;
+                if (event.scrollDelta.dy > 0) {
+                  _goToPage(_currentIndex + 1, covers.length);
+                } else {
+                  _goToPage(_currentIndex - 1, covers.length);
+                }
+              }
+            },
+            child: ScrollConfiguration(
+              behavior: const _CoverScrollBehavior(),
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: covers.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final url = covers[index];
+                  return ClickRegion(
+                    onTap: () => launchUrlString(url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.cover,
+                        progressIndicatorBuilder: (context, url, p) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: p.totalSize == null
+                                  ? null
+                                  : p.downloaded / p.totalSize!,
+                            ),
+                          );
+                        },
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[800],
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.white),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
+          if (covers.length > 1)
+            Positioned(
+              left: 8,
+              child: _NavButton(
+                icon: Icons.chevron_left,
+                onTap: () => _goToPage(_currentIndex - 1, covers.length),
+              ),
+            ),
+          if (covers.length > 1)
+            Positioned(
+              right: 8,
+              child: _NavButton(
+                icon: Icons.chevron_right,
+                onTap: () => _goToPage(_currentIndex + 1, covers.length),
+              ),
+            ),
           Positioned(
             bottom: 8,
             child: IgnorePointer(
@@ -1052,6 +1087,41 @@ class _CoverState extends State<Cover> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _goToPage(int index, int total) {
+    if (total <= 1) return;
+    final target = index.clamp(0, total - 1);
+    if (target == _currentIndex) return;
+    _controller.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xB3000000),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
       ),
     );
   }
