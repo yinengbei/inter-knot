@@ -89,7 +89,7 @@ class BaseConnect extends GetConnect {
       return Future.value(request);
     });
     httpClient.addResponseModifier((req, rep) {
-      if (rep.statusCode == HttpStatus.unauthorized) {
+      if (rep.statusCode == 401) {
         box.remove('access_token');
         Get.offAll(() => const LoginPage());
       }
