@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -980,68 +981,92 @@ class _CoverState extends State<Cover> {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 220,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: covers.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final url = covers[index];
-              return ClickRegion(
-                onTap: () => launchUrlString(url),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: url,
-                    fit: BoxFit.cover,
-                    progressIndicatorBuilder: (context, url, p) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: p.totalSize == null
-                              ? null
-                              : p.downloaded / p.totalSize!,
-                        ),
-                      );
-                    },
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[800],
-                      child:
-                          const Icon(Icons.broken_image, color: Colors.white),
+    return SizedBox(
+      height: 220,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          ScrollConfiguration(
+            behavior: const _CoverScrollBehavior(),
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: covers.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                final url = covers[index];
+                return ClickRegion(
+                  onTap: () => launchUrlString(url),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      progressIndicatorBuilder: (context, url, p) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: p.totalSize == null
+                                ? null
+                                : p.downloaded / p.totalSize!,
+                          ),
+                        );
+                      },
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[800],
+                        child:
+                            const Icon(Icons.broken_image, color: Colors.white),
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(covers.length, (i) {
-            final isActive = i == _currentIndex;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: isActive ? 16 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xffFBC02D)
-                    : const Color(0xff2E2E2E),
-                borderRadius: BorderRadius.circular(6),
+          Positioned(
+            bottom: 8,
+            child: IgnorePointer(
+              child: SizedBox(
+                height: 8,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(covers.length, (i) {
+                    final isActive = i == _currentIndex;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: isActive ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? const Color(0xffFBC02D)
+                            : const Color(0xff2E2E2E),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    );
+                  }),
+                ),
               ),
-            );
-          }),
-        ),
-      ],
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _CoverScrollBehavior extends MaterialScrollBehavior {
+  const _CoverScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
 }
