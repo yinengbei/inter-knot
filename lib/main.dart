@@ -42,6 +42,11 @@ class MyApp extends StatelessWidget {
           seedColor: Colors.blue,
           brightness: Brightness.dark,
         ),
+        textTheme: const TextTheme(
+          titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          bodyMedium: TextStyle(fontSize: 15),
+          labelMedium: TextStyle(fontSize: 12),
+        ),
       ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

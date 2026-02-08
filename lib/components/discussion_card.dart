@@ -179,9 +179,9 @@ class _DiscussionCardState extends State<DiscussionCard>
                             Text(
                               widget.discussion.author.name,
                               style: const TextStyle(
-                                color: Color(0xff626262),
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                                fontSize: 15,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -199,10 +199,7 @@ class _DiscussionCardState extends State<DiscussionCard>
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   widget.discussion.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -213,7 +210,10 @@ class _DiscussionCardState extends State<DiscussionCard>
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     widget.discussion.bodyText,
-                    style: const TextStyle(color: Color(0xffB3B3B1)),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 15,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 3,
                   ),

@@ -234,7 +234,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                     Text(
                                                       '发布时间：${widget.discussion.createdAt.toLocal().toString().split('.').first}',
                                                       style: const TextStyle(
-                                                        fontSize: 10,
+                                                        fontSize: 12,
                                                         color:
                                                             Color(0xff808080),
                                                       ),
@@ -245,7 +245,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                       Text(
                                                         '更新时间：${widget.discussion.lastEditedAt!.toLocal().toString().split('.').first}',
                                                         style: const TextStyle(
-                                                          fontSize: 10,
+                                                          fontSize: 12,
                                                           color:
                                                               Color(0xff808080),
                                                         ),
