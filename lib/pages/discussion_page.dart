@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -939,26 +940,73 @@ class Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return discussion.cover == null
-        ? Assets.images.defaultCover.image(fit: BoxFit.contain)
-        : ClickRegion(
-            onTap: () => launchUrlString(discussion.cover!),
-            child: Image.network(
-              discussion.cover!,
-              fit: BoxFit.contain,
-              loadingBuilder: (context, child, p) {
-                if (p == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: p.expectedTotalBytes == null
-                        ? null
-                        : p.cumulativeBytesLoaded / p.expectedTotalBytes!,
+    final covers = discussion.covers;
+
+    if (covers.isEmpty) {
+      return Assets.images.defaultCover.image(fit: BoxFit.contain);
+    }
+
+    if (covers.length == 1) {
+      return ClickRegion(
+        onTap: () => launchUrlString(covers.first),
+        child: CachedNetworkImage(
+          imageUrl: covers.first,
+          fit: BoxFit.contain,
+          progressIndicatorBuilder: (context, url, p) {
+            return Center(
+              child: CircularProgressIndicator(
+                value: p.totalSize == null ? null : p.downloaded / p.totalSize!,
+              ),
+            );
+          },
+          errorWidget: (context, url, error) =>
+              Assets.images.defaultCover.image(fit: BoxFit.contain),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: covers.map((url) {
+              // Calculate width for grid-like appearance
+              // e.g. 3 columns
+              final width = (constraints.maxWidth - 16) / 3;
+              return SizedBox(
+                width: width,
+                height: width,
+                child: ClickRegion(
+                  onTap: () => launchUrlString(url),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      progressIndicatorBuilder: (context, url, p) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: p.totalSize == null
+                                ? null
+                                : p.downloaded / p.totalSize!,
+                          ),
+                        );
+                      },
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[800],
+                        child:
+                            const Icon(Icons.broken_image, color: Colors.white),
+                      ),
+                    ),
                   ),
-                );
-              },
-              errorBuilder: (context, e, s) =>
-                  Assets.images.defaultCover.image(fit: BoxFit.contain),
-            ),
-          );
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
   }
 }

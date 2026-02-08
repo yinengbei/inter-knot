@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 
@@ -23,25 +24,24 @@ class Avatar extends StatelessWidget {
               width: size,
               fit: BoxFit.cover,
             )
-          : Image.network(
-              src!.trim(),
+          : CachedNetworkImage(
+              imageUrl: src!.trim(),
               width: size,
               height: size,
               fit: BoxFit.cover,
-              loadingBuilder: (context, child, p) {
-                if (p == null) return child;
-                return SizedBox.square(
-                  dimension: size,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: p.expectedTotalBytes == null
-                          ? null
-                          : p.cumulativeBytesLoaded / p.expectedTotalBytes!,
-                    ),
+
+              progressIndicatorBuilder: (context, url, p) => SizedBox.square(
+                dimension: size,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: p.totalSize != null
+                        ? p.downloaded / p.totalSize!
+                        : null,
                   ),
-                );
-              },
-              errorBuilder: (context, e, s) => Assets.images.profilePhoto.image(
+                ),
+              ),
+              errorWidget: (context, url, error) =>
+                  Assets.images.profilePhoto.image(
                 height: size,
                 width: size,
                 fit: BoxFit.cover,

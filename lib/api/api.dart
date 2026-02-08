@@ -385,22 +385,33 @@ class Api extends BaseConnect {
     required String title,
     required String text,
     required String slug,
-    String? coverId,
+    dynamic coverId, // String or List<String>
     String? authorId,
-  }) =>
-      post(
-        '/api/articles',
-        {
-          'data': {
-            'title': title,
-            'text': text,
-            'slug': slug,
-            'publishedAt': DateTime.now().toIso8601String(),
-            if (coverId != null && coverId.isNotEmpty) 'cover': coverId,
-            if (authorId != null && authorId.isNotEmpty) 'author': authorId,
-          },
-        },
-      );
+  }) {
+    final Map<String, dynamic> data = {
+      'title': title,
+      'text': text,
+      'slug': slug,
+      'publishedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (coverId != null) {
+      if (coverId is String && coverId.isNotEmpty) {
+        data['cover'] = coverId;
+      } else if (coverId is List && coverId.isNotEmpty) {
+        data['cover'] = coverId;
+      }
+    }
+
+    if (authorId != null && authorId.isNotEmpty) {
+      data['author'] = authorId;
+    }
+
+    return post(
+      '/api/articles',
+      {'data': data},
+    );
+  }
 
   Future<String?> findAuthorIdByName(String name) async {
     final res = await get(
@@ -640,5 +651,44 @@ class Api extends BaseConnect {
     } catch (_) {
       return null;
     }
+  }
+
+  /// 通用图片上传，支持所有平台
+  ///
+  /// [bytes] - 图片二进制数据
+  /// [filename] - 文件名
+  /// [mimeType] - MIME 类型，如 'image/png'
+  /// [onProgress] - 进度回调，参数为 0-100
+  Future<Map<String, dynamic>?> uploadImage({
+    required List<int> bytes,
+    required String filename,
+    required String mimeType,
+    required void Function(int percent) onProgress,
+  }) async {
+    final form = FormData({
+      'files': MultipartFile(bytes, filename: filename, contentType: mimeType),
+    });
+
+    final res = await post(
+      '/api/upload',
+      form,
+      uploadProgress: (percent) => onProgress((percent * 100).round()),
+    );
+
+    if (res.hasError) {
+      throw ApiException(res.statusText ?? 'Upload failed',
+          statusCode: res.statusCode);
+    }
+
+    final body = res.body;
+    if (body is List && body.isNotEmpty) {
+      return body.first as Map<String, dynamic>;
+    } else if (body is Map<String, dynamic>) {
+      // Sometimes Strapi returns a single object depending on plugin config?
+      // Standard upload returns array.
+      return body;
+    }
+
+    return null;
   }
 }
