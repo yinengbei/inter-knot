@@ -48,6 +48,8 @@ class ReportDiscussionComment extends StatelessWidget {
                         children: [
                           Flexible(
                             child: InkWell(
+                              splashColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
                               onTap: () => launchUrlString(comment.url),
                               child: Text(comment.login),
                             ),

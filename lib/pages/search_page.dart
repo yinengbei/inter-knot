@@ -110,6 +110,8 @@ class _SearchPageState extends State<SearchPage>
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       borderRadius: BorderRadius.circular(28),
                       onTap: () {
                         c.refreshSearchData();
@@ -139,6 +141,8 @@ class _SearchPageState extends State<SearchPage>
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       borderRadius: BorderRadius.circular(28),
                       onTap: () {
                         if (c.isLogin.value) {

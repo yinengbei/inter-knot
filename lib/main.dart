@@ -35,6 +35,9 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         fontFamily: 'ZhCn',
         fontFamilyFallback: const ['ZhCn', 'sans-serif'],
+        splashFactory: NoSplash.splashFactory,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
           brightness: Brightness.dark,
@@ -95,6 +98,8 @@ class MyHomePage extends GetView<Controller> {
               children: [
                 Expanded(
                   child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
                     onTap: () => controller.animateToPage(0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -122,6 +127,8 @@ class MyHomePage extends GetView<Controller> {
                     color: const Color(0xffFBC02D),
                     shape: const CircleBorder(),
                     child: InkWell(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
                       customBorder: const CircleBorder(),
                       onTap: () {
                         if (controller.isLogin.value) {
@@ -140,6 +147,8 @@ class MyHomePage extends GetView<Controller> {
                 ),
                 Expanded(
                   child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
                     onTap: () => controller.animateToPage(1),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
