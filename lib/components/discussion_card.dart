@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/avatar.dart';
@@ -201,14 +202,13 @@ class Cover extends StatelessWidget {
             width: double.infinity,
             fit: BoxFit.cover,
           )
-        : Image.network(
-            discussion.cover!,
+        : CachedNetworkImage(
+            imageUrl: discussion.cover!,
             width: double.infinity,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, p) {
-              if (p == null) return child;
-              final total = p.expectedTotalBytes;
-              final cur = p.cumulativeBytesLoaded;
+            progressIndicatorBuilder: (context, url, p) {
+              final total = p.totalSize;
+              final cur = p.downloaded;
               return AspectRatio(
                 aspectRatio: 643 / 408,
                 child: Center(
@@ -218,7 +218,8 @@ class Cover extends StatelessWidget {
                 ),
               );
             },
-            errorBuilder: (context, e, s) => Assets.images.defaultCover.image(
+            errorWidget: (context, url, error) =>
+                Assets.images.defaultCover.image(
               width: double.infinity,
               fit: BoxFit.cover,
             ),

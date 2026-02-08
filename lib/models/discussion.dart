@@ -12,7 +12,8 @@ class DiscussionModel {
   String title;
   String bodyHTML;
   String rawBodyText;
-  String? cover;
+  List<String> covers;
+  String? get cover => covers.isNotEmpty ? covers.first : null;
   String id;
   // int number; // Removed, merged into id
   DateTime createdAt;
@@ -20,32 +21,42 @@ class DiscussionModel {
   int commentsCount;
   AuthorModel author;
   List<PaginationModel<CommentModel>> comments;
-  String get bodyText => rawBodyText.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String get bodyText {
+    // 移除 Markdown 图片 ![alt](url)
+    var text =
+        rawBodyText.replaceAll(RegExp(r'!\[.*?\]\(.*?\)', dotAll: true), '');
+    // 移除 HTML img 标签
+    text = text.replaceAll(
+        RegExp('<img[^>]*>', caseSensitive: false, dotAll: true), '');
+    // 移除多余的空行，但保留段落结构 (最多保留两个换行符)
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return text.trim();
+  }
+
   String get url => ''; // Placeholder
-  
+
   Api? _api;
   Api get api => _api ??= Get.find<Api>();
-  
-  bool hasNextPage() {
 
+  bool hasNextPage() {
     if (comments.isEmpty) return true;
 
     return comments.last.hasNextPage;
   }
-  
+
   bool _isLoadingComments = false;
-  
+
   Future<void> fetchComments() async {
     if (_isLoadingComments) return;
     if (comments.isNotEmpty && !comments.last.hasNextPage) return;
-    
+
     _isLoadingComments = true;
     final lastPage = comments.isEmpty ? null : comments.last;
     final endCur = lastPage?.endCursor ?? '0';
-    
+
     try {
       final pagination = await api.getComments(id, endCur);
-      
+
       if (comments.isEmpty) {
         comments = [pagination];
       } else {
@@ -65,7 +76,7 @@ class DiscussionModel {
     required this.title,
     required this.bodyHTML,
     required this.rawBodyText,
-    required this.cover,
+    required this.covers,
     // required this.number, // Removed
     required this.id,
     required this.createdAt,
@@ -76,10 +87,9 @@ class DiscussionModel {
   });
 
   factory DiscussionModel.fromJson(Map<String, dynamic> json) {
- 
     final textVal = json['text'];
     String rawBody = textVal is String ? textVal : '';
-    
+
     if (json['blocks'] != null) {
       final blocks = json['blocks'] as List<dynamic>;
       for (final block in blocks) {
@@ -103,17 +113,34 @@ class DiscussionModel {
     );
 
     final (:cover, :html) = parseHtml(htmlBody);
-    
+
     // 处理封面图: 优先取 json['cover']，如果没有则尝试从 parseHtml 获取
-    String? coverUrl;
+    final List<String> parsedCovers = [];
     final coverData = json['cover'];
-    if (coverData is Map<String, dynamic> && coverData['url'] != null) {
-      coverUrl = coverData['url'] as String;
-      if (!coverUrl.startsWith('http')) {
-        coverUrl = 'https://ik.tiwat.cn$coverUrl';
+
+    if (coverData is List) {
+      for (final item in coverData) {
+        if (item is Map<String, dynamic> && item['url'] != null) {
+          String url = item['url'] as String;
+          if (!url.startsWith('http')) {
+            url = 'https://ik.tiwat.cn$url';
+          }
+          parsedCovers.add(url);
+        }
       }
+    } else if (coverData is Map<String, dynamic> && coverData['url'] != null) {
+      String url = coverData['url'] as String;
+      if (!url.startsWith('http')) {
+        url = 'https://ik.tiwat.cn$url';
+      }
+      parsedCovers.add(url);
     }
-    
+
+    // Fallback to HTML parsed cover if no explicit covers found
+    if (parsedCovers.isEmpty && cover != null) {
+      parsedCovers.add(cover);
+    }
+
     final commentsJson = json['comments'] as Map<String, dynamic>?;
 
     final authorData = json['author'];
@@ -126,13 +153,19 @@ class DiscussionModel {
           );
 
     return DiscussionModel(
-      title: json['title'] is String ? json['title'] as String : (json['title']?.toString() ?? ''),
+      title: json['title'] is String
+          ? json['title'] as String
+          : (json['title']?.toString() ?? ''),
       bodyHTML: html,
-      cover: coverUrl ?? cover, // 优先使用 Strapi 字段，其次是内容里的图
+      covers: parsedCovers,
       rawBodyText: rawBody,
       // number: ... Removed
-      id: json['documentId'] as String? ?? json['id']?.toString() ?? '', // 优先 documentId
-      createdAt: json['createdAt'] is String ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
+      id: json['documentId'] as String? ??
+          json['id']?.toString() ??
+          '', // 优先 documentId
+      createdAt: json['createdAt'] is String
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
       commentsCount: (json['commentsCount'] ?? json['commentscount']) is int
           ? (json['commentsCount'] ?? json['commentscount']) as int
           : int.tryParse(
@@ -140,7 +173,8 @@ class DiscussionModel {
               ) ??
               0,
       lastEditedAt:
-          (json['updatedAt'] is String ? json['updatedAt'] as String : null).use((v) => DateTime.parse(v)),
+          (json['updatedAt'] is String ? json['updatedAt'] as String : null)
+              .use((v) => DateTime.parse(v)),
       author: author,
       comments: commentsJson != null
           ? [
@@ -154,8 +188,7 @@ class DiscussionModel {
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is DiscussionModel && other.id == id;
+  bool operator ==(Object other) => other is DiscussionModel && other.id == id;
 
   @override
   int get hashCode => id.hashCode;
