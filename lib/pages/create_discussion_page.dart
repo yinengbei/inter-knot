@@ -653,7 +653,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
               child: isDesktop
                   ? Row(
                       children: [
-                        Expanded(
+                        SizedBox(
+                          width: 180,
                           child: Container(
                             margin: const EdgeInsets.only(
                               top: 16,
@@ -676,6 +677,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                   ListTile(
                                     leading: const Icon(Icons.article_outlined),
                                     title: const Text('正文'),
+                                    dense: true,
+                                    visualDensity: VisualDensity.compact,
+                                    minLeadingWidth: 0,
+                                    horizontalTitleGap: 8,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(horizontal: 8),
                                     selected: _selectedIndex == 0,
                                     onTap: () {
                                       setState(() {
@@ -686,6 +693,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                   ListTile(
                                     leading: const Icon(Icons.image_outlined),
                                     title: const Text('图片'),
+                                    dense: true,
+                                    visualDensity: VisualDensity.compact,
+                                    minLeadingWidth: 0,
+                                    horizontalTitleGap: 8,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(horizontal: 8),
                                     selected: _selectedIndex == 1,
                                     onTap: () {
                                       setState(() {
