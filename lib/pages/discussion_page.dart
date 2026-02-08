@@ -934,14 +934,28 @@ class _DiscussionActionButtonsState extends State<DiscussionActionButtons>
   }
 }
 
-class Cover extends StatelessWidget {
+class Cover extends StatefulWidget {
   const Cover({super.key, required this.discussion});
 
   final DiscussionModel discussion;
 
   @override
+  State<Cover> createState() => _CoverState();
+}
+
+class _CoverState extends State<Cover> {
+  final _controller = PageController();
+  int _currentIndex = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final covers = discussion.covers;
+    final covers = widget.discussion.covers;
 
     if (covers.isEmpty) {
       return Assets.images.defaultCover.image(fit: BoxFit.contain);
@@ -966,48 +980,68 @@ class Cover extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: covers.map((url) {
-              // Calculate width for grid-like appearance
-              // e.g. 3 columns
-              final width = (constraints.maxWidth - 16) / 3;
-              return SizedBox(
-                width: width,
-                height: width,
-                child: ClickRegion(
-                  onTap: () => launchUrlString(url),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      progressIndicatorBuilder: (context, url, p) {
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: p.totalSize == null
-                                ? null
-                                : p.downloaded / p.totalSize!,
-                          ),
-                        );
-                      },
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[800],
-                        child:
-                            const Icon(Icons.broken_image, color: Colors.white),
-                      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: covers.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final url = covers[index];
+              return ClickRegion(
+                onTap: () => launchUrlString(url),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.cover,
+                    progressIndicatorBuilder: (context, url, p) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: p.totalSize == null
+                              ? null
+                              : p.downloaded / p.totalSize!,
+                        ),
+                      );
+                    },
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[800],
+                      child:
+                          const Icon(Icons.broken_image, color: Colors.white),
                     ),
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(covers.length, (i) {
+            final isActive = i == _currentIndex;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: isActive ? 16 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xffFBC02D)
+                    : const Color(0xff2E2E2E),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }

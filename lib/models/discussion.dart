@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
+import 'package:inter_knot/constants/api_config.dart';
 import 'package:inter_knot/helpers/parse_html.dart';
 import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/pagination.dart';
+import 'package:html/parser.dart' show parseFragment;
 import 'package:markdown/markdown.dart' as md;
 
 String _shortenForLog(String input, [int max = 400]) {
@@ -129,31 +131,48 @@ class DiscussionModel {
     if (kDebugMode) {
       debugPrint('Discussion HTML: ${_shortenForLog(html)}');
     }
-    // 处理封面图: 优先取 json['cover']，如果没有则尝试从 parseHtml 获取
     final List<String> parsedCovers = [];
-    final coverData = json['cover'];
 
+    String? normalizeUrl(String? url) {
+      if (url == null || url.isEmpty) return null;
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      if (url.startsWith('/')) return '${ApiConfig.baseUrl}$url';
+      return '${ApiConfig.baseUrl}/$url';
+    }
+
+    final coverData = json['cover'];
     if (coverData is List) {
       for (final item in coverData) {
         if (item is Map<String, dynamic> && item['url'] != null) {
-          String url = item['url'] as String;
-          if (!url.startsWith('http')) {
-            url = 'https://ik.tiwat.cn$url';
-          }
-          parsedCovers.add(url);
+          final url = normalizeUrl(item['url'] as String?);
+          if (url != null) parsedCovers.add(url);
         }
       }
     } else if (coverData is Map<String, dynamic> && coverData['url'] != null) {
-      String url = coverData['url'] as String;
-      if (!url.startsWith('http')) {
-        url = 'https://ik.tiwat.cn$url';
-      }
-      parsedCovers.add(url);
+      final url = normalizeUrl(coverData['url'] as String?);
+      if (url != null) parsedCovers.add(url);
     }
 
-    // Fallback to HTML parsed cover if no explicit covers found
-    if (parsedCovers.isEmpty && cover != null) {
-      parsedCovers.add(cover);
+    final bodyImages = <String>[];
+    final fragment = parseFragment(htmlBody);
+    for (final img in fragment.querySelectorAll('img')) {
+      final src = img.attributes['src'];
+      final url = normalizeUrl(src);
+      if (url != null) bodyImages.add(url);
+    }
+
+    final List<String> covers = [];
+    final firstCover =
+        (parsedCovers.isNotEmpty ? parsedCovers.first : null) ??
+            (bodyImages.isNotEmpty ? bodyImages.first : null) ??
+            normalizeUrl(cover);
+    if (firstCover != null) covers.add(firstCover);
+
+    for (final url in bodyImages) {
+      if (!covers.contains(url)) covers.add(url);
+    }
+    for (final url in parsedCovers.skip(1)) {
+      if (!covers.contains(url)) covers.add(url);
     }
 
     final commentsJson = json['comments'] as Map<String, dynamic>?;
@@ -172,7 +191,7 @@ class DiscussionModel {
           ? json['title'] as String
           : (json['title']?.toString() ?? ''),
       bodyHTML: html,
-      covers: parsedCovers,
+      covers: covers,
       rawBodyText: normalized,
       // number: ... Removed
       id: json['documentId'] as String? ??
