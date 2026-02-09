@@ -44,7 +44,7 @@ class _DiscussionGridState extends State<DiscussionGrid> {
         final child = WaterfallFlow.builder(
           controller: scrollController,
           physics: !isCompact
-              ? const NeverScrollableScrollPhysics()
+              ? const ScrollbarOnlyScrollPhysics()
               : const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(4),
           gridDelegate: SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
@@ -158,7 +158,10 @@ class _DiscussionGridState extends State<DiscussionGrid> {
         if (!isCompact) {
           return SmoothScroll(
             controller: scrollController,
-            child: child,
+            child: Scrollbar(
+              controller: scrollController,
+              child: child,
+            ),
           );
         }
         return child;
