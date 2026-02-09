@@ -285,8 +285,6 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                         controller: scrollController,
                                         children: [
                                           Container(
-                                            constraints: const BoxConstraints(
-                                                maxHeight: 500),
                                             width: double.infinity,
                                             child: Cover(
                                                 discussion: widget.discussion),
@@ -362,45 +360,39 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                       physics: physics,
                                                       child: Column(
                                                         children: [
-                                                          SizedBox(
-                                                            height: constraints
-                                                                    .maxHeight -
-                                                                120,
-                                                            child: Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .fromLTRB(
-                                                                      16,
-                                                                      16,
-                                                                      24,
-                                                                      16),
-                                                              child: ClipRRect(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                                child:
-                                                                    Container(
-                                                                  width: double
-                                                                      .infinity,
-                                                                  foregroundDecoration:
-                                                                      BoxDecoration(
-                                                                    border:
-                                                                        Border
-                                                                            .all(
-                                                                      color: const Color(
-                                                                          0xff313132),
-                                                                      width: 4,
-                                                                    ),
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                            12),
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .fromLTRB(
+                                                                    16,
+                                                                    16,
+                                                                    24,
+                                                                    16),
+                                                            child: ClipRRect(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                              child: Container(
+                                                                width: double
+                                                                    .infinity,
+                                                                foregroundDecoration:
+                                                                    BoxDecoration(
+                                                                  border:
+                                                                      Border
+                                                                          .all(
+                                                                    color: const Color(
+                                                                        0xff313132),
+                                                                    width: 4,
                                                                   ),
-                                                                  child: Cover(
-                                                                    discussion:
-                                                                        widget
-                                                                            .discussion,
-                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                          12),
+                                                                ),
+                                                                child: Cover(
+                                                                  discussion:
+                                                                      widget
+                                                                          .discussion,
                                                                 ),
                                                               ),
                                                             ),
@@ -946,127 +938,172 @@ class _CoverState extends State<Cover> {
     super.dispose();
   }
 
+  double _calculateHeight(double width, int index) {
+    final coverImages = widget.discussion.coverImages;
+    if (index >= coverImages.length) {
+      return width * (408 / 643); // 默认宽高比
+    }
+
+    final coverImage = coverImages[index];
+    final double imgW = coverImage.width?.toDouble() ?? 643;
+    final double imgH = coverImage.height?.toDouble() ?? 408;
+    final double aspectRatio = imgW / imgH;
+
+    double height = width / aspectRatio;
+
+    // 限制高度范围，避免过大或过小
+    if (height > 600) height = 600;
+    if (height < 100) height = 100;
+
+    return height;
+  }
+
   @override
   Widget build(BuildContext context) {
     final covers = widget.discussion.covers;
 
     if (covers.isEmpty) {
-      return Assets.images.defaultCover.image(fit: BoxFit.contain);
-    }
-
-    if (covers.length == 1) {
-      return ClickRegion(
-        onTap: () => launchUrlString(covers.first),
-        child: CachedNetworkImage(
-          imageUrl: covers.first,
-          fit: BoxFit.contain,
-          progressIndicatorBuilder: (context, url, p) {
-            return Center(
-              child: CircularProgressIndicator(
-                value: p.totalSize == null ? null : p.downloaded / p.totalSize!,
-              ),
-            );
-          },
-          errorWidget: (context, url, error) =>
-              Assets.images.defaultCover.image(fit: BoxFit.contain),
-        ),
+      return AspectRatio(
+        aspectRatio: 643 / 408,
+        child: Assets.images.defaultCover.image(fit: BoxFit.contain),
       );
     }
 
-    return SizedBox(
-      height: 220,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          ScrollConfiguration(
-            behavior: const _CoverScrollBehavior(),
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: covers.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                final url = covers[index];
-                return ClickRegion(
-                  onTap: () => launchUrlString(url),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      progressIndicatorBuilder: (context, url, p) {
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: p.totalSize == null
-                                ? null
-                                : p.downloaded / p.totalSize!,
-                          ),
-                        );
-                      },
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[800],
-                        child:
-                            const Icon(Icons.broken_image, color: Colors.white),
-                      ),
+    if (covers.length == 1) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final height = _calculateHeight(constraints.maxWidth, 0);
+          return SizedBox(
+            height: height,
+            child: ClickRegion(
+              onTap: () => launchUrlString(covers.first),
+              child: CachedNetworkImage(
+                imageUrl: covers.first,
+                width: constraints.maxWidth,
+                height: height,
+                fit: BoxFit.contain,
+                progressIndicatorBuilder: (context, url, p) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: p.totalSize == null
+                          ? null
+                          : p.downloaded / p.totalSize!,
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (covers.length > 1)
-            Positioned.fill(
-              left: 8,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _NavButton(
-                  icon: Icons.chevron_left,
-                  onTap: () => _goToPage(_currentIndex - 1, covers.length),
-                ),
+                  );
+                },
+                errorWidget: (context, url, error) =>
+                    Assets.images.defaultCover.image(fit: BoxFit.contain),
               ),
             ),
-          if (covers.length > 1)
-            Positioned.fill(
-              right: 8,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: _NavButton(
-                  icon: Icons.chevron_right,
-                  onTap: () => _goToPage(_currentIndex + 1, covers.length),
-                ),
-              ),
-            ),
-          Positioned(
-            bottom: 8,
-            child: IgnorePointer(
-              child: SizedBox(
-                height: 8,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(covers.length, (i) {
-                    final isActive = i == _currentIndex;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: isActive ? 16 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? const Color(0xffFBC02D)
-                            : const Color(0xff2E2E2E),
-                        borderRadius: BorderRadius.circular(6),
+          );
+        },
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = _calculateHeight(constraints.maxWidth, _currentIndex);
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height: height,
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              ScrollConfiguration(
+                behavior: const _CoverScrollBehavior(),
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: covers.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final url = covers[index];
+                    return ClickRegion(
+                      onTap: () => launchUrlString(url),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: url,
+                          width: constraints.maxWidth,
+                          height: height,
+                          fit: BoxFit.cover,
+                          progressIndicatorBuilder: (context, url, p) {
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: p.totalSize == null
+                                    ? null
+                                    : p.downloaded / p.totalSize!,
+                              ),
+                            );
+                          },
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[800],
+                            child:
+                                const Icon(Icons.broken_image, color: Colors.white),
+                          ),
+                        ),
                       ),
                     );
-                  }),
+                  },
                 ),
               ),
-            ),
+              if (covers.length > 1)
+                Positioned.fill(
+                  left: 8,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _NavButton(
+                      icon: Icons.chevron_left,
+                      onTap: () => _goToPage(_currentIndex - 1, covers.length),
+                    ),
+                  ),
+                ),
+              if (covers.length > 1)
+                Positioned.fill(
+                  right: 8,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: _NavButton(
+                      icon: Icons.chevron_right,
+                      onTap: () => _goToPage(_currentIndex + 1, covers.length),
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 8,
+                child: IgnorePointer(
+                  child: SizedBox(
+                    height: 8,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(covers.length, (i) {
+                        final isActive = i == _currentIndex;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: isActive ? 16 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? const Color(0xffFBC02D)
+                                : const Color(0xff2E2E2E),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
