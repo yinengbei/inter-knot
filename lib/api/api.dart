@@ -184,6 +184,8 @@ class Api extends BaseConnect {
       query: {
         'populate[author][populate]': 'avatar',
         'populate[cover][fields][0]': 'url',
+        'populate[cover][fields][1]': 'width',
+        'populate[cover][fields][2]': 'height',
         'populate[blocks][populate]': '*',
       },
     );

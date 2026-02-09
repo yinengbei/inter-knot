@@ -43,21 +43,16 @@ class _SearchPageState extends State<SearchPage>
 
     return Stack(
       children: [
-        Positioned(
-          bottom: -200,
-          left: 0,
-          right: 0,
-          child: Transform.scale(
-            scale: 1.5,
-            alignment: Alignment.bottomCenter,
-            child: Image.asset(
-              'assets/images/zzz.webp',
-              fit: BoxFit.fitWidth,
-            ),
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/zzz.webp',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
           ),
         ),
         Column(
           children: [
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: SearchBar(

@@ -80,7 +80,6 @@ class MyHomePage extends GetView<Controller> {
         body: Column(
           children: [
             const MyAppBar(),
-            const SizedBox(height: 16),
             Expanded(
               child: PageView(
                 controller: controller.pageController,
@@ -188,7 +187,6 @@ class MyHomePage extends GetView<Controller> {
       body: Column(
         children: [
           const MyAppBar(),
-          const SizedBox(height: 16),
           Expanded(
             child: PageView(
               controller: controller.pageController,

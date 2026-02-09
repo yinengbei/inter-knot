@@ -11,11 +11,24 @@ import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:markdown/markdown.dart' as md;
 
+class CoverImage {
+  final String url;
+  final int? width;
+  final int? height;
+
+  CoverImage({
+    required this.url,
+    this.width,
+    this.height,
+  });
+}
+
 class DiscussionModel {
   String title;
   String bodyHTML;
   String rawBodyText;
-  List<String> covers;
+  List<CoverImage> coverImages;
+  List<String> get covers => coverImages.map((e) => e.url).toList();
   String? get cover => covers.isNotEmpty ? covers.first : null;
   String id;
   // int number; // Removed, merged into id
@@ -79,7 +92,7 @@ class DiscussionModel {
     required this.title,
     required this.bodyHTML,
     required this.rawBodyText,
-    required this.covers,
+    required this.coverImages,
     // required this.number, // Removed
     required this.id,
     required this.createdAt,
@@ -118,38 +131,52 @@ class DiscussionModel {
     );
 
     final (:cover, :html) = parseHtml(htmlBody);
-    final List<String> parsedCovers = [];
+    final List<CoverImage> parsedCovers = [];
 
-    String? normalizeUrl(String? url) {
+    CoverImage? normalizeCover(String? url, int? width, int? height) {
       if (url == null || url.isEmpty) return null;
-      if (url.startsWith('http://') || url.startsWith('https://')) return url;
-      if (url.startsWith('/')) return '${ApiConfig.baseUrl}$url';
-      return '${ApiConfig.baseUrl}/$url';
+      String finalUrl = url;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        finalUrl = url;
+      } else if (url.startsWith('/')) {
+        finalUrl = '${ApiConfig.baseUrl}$url';
+      } else {
+        finalUrl = '${ApiConfig.baseUrl}/$url';
+      }
+      return CoverImage(url: finalUrl, width: width, height: height);
     }
 
     final coverData = json['cover'];
     if (coverData is List) {
       for (final item in coverData) {
         if (item is Map<String, dynamic> && item['url'] != null) {
-          final url = normalizeUrl(item['url'] as String?);
-          if (url != null) parsedCovers.add(url);
+          final width = item['width'] as int?;
+          final height = item['height'] as int?;
+          final cover = normalizeCover(item['url'] as String?, width, height);
+          if (cover != null) parsedCovers.add(cover);
         }
       }
     } else if (coverData is Map<String, dynamic> && coverData['url'] != null) {
-      final url = normalizeUrl(coverData['url'] as String?);
-      if (url != null) parsedCovers.add(url);
+      final width = coverData['width'] as int?;
+      final height = coverData['height'] as int?;
+      final cover = normalizeCover(coverData['url'] as String?, width, height);
+      if (cover != null) parsedCovers.add(cover);
     }
 
-    final List<String> covers = [];
+    final List<CoverImage> covers = [];
 
     if (parsedCovers.isNotEmpty) {
       covers.addAll(parsedCovers);
     } else {
       final fragment = parseFragment(htmlBody);
       final firstImg = fragment.querySelector('img');
-      final firstUrl =
-          normalizeUrl(firstImg?.attributes['src']) ?? normalizeUrl(cover);
-      if (firstUrl != null) covers.add(firstUrl);
+      final src = firstImg?.attributes['src'];
+      // Try to parse width/height from img attributes if available (often not reliable in HTML strings but worth a try)
+      final width = int.tryParse(firstImg?.attributes['width'] ?? '');
+      final height = int.tryParse(firstImg?.attributes['height'] ?? '');
+
+      final firstCover = normalizeCover(src ?? cover, width, height);
+      if (firstCover != null) covers.add(firstCover);
     }
 
     final commentsJson = json['comments'] as Map<String, dynamic>?;
@@ -168,7 +195,7 @@ class DiscussionModel {
           ? json['title'] as String
           : (json['title']?.toString() ?? ''),
       bodyHTML: html,
-      covers: covers,
+      coverImages: covers,
       rawBodyText: normalized,
       // number: ... Removed
       id: json['documentId'] as String? ??

@@ -241,33 +241,52 @@ class Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return discussion.cover == null
-        ? Assets.images.defaultCover.image(
-            width: double.infinity,
-            fit: BoxFit.cover,
-          )
-        : CachedNetworkImage(
-            imageUrl: discussion.cover!,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            progressIndicatorBuilder: (context, url, p) {
-              final total = p.totalSize;
-              final cur = p.downloaded;
-              return AspectRatio(
-                aspectRatio: 643 / 408,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: total == null || cur == 0 ? null : cur / total,
-                  ),
-                ),
-              );
-            },
-            errorWidget: (context, url, error) =>
-                Assets.images.defaultCover.image(
-              width: double.infinity,
+    if (discussion.cover == null) {
+      return AspectRatio(
+        aspectRatio: 643 / 408,
+        child: Assets.images.defaultCover.image(
+          width: double.infinity,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    final coverImage = discussion.coverImages.first;
+    final double imgW = coverImage.width?.toDouble() ?? 643;
+    final double imgH = coverImage.height?.toDouble() ?? 408;
+    final double aspectRatio = imgW / imgH;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate the height the image wants to be
+        final width = constraints.maxWidth;
+        double height = width / aspectRatio;
+
+        // Manually clamp the height to match the parent ConstrainedBox constraints
+        // This prevents the placeholder from shrinking horizontally to maintain aspect ratio
+        if (height > constraints.maxHeight) height = constraints.maxHeight;
+        if (height < constraints.minHeight) height = constraints.minHeight;
+
+        return CachedNetworkImage(
+          imageUrl: discussion.cover!,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+          placeholder: (context, url) => SizedBox(
+            width: width,
+            height: height,
+          ),
+          errorWidget: (context, url, error) => SizedBox(
+            width: width,
+            height: height,
+            child: Assets.images.defaultCover.image(
               fit: BoxFit.cover,
             ),
-          );
+          ),
+        );
+      },
+    );
   }
 }
 

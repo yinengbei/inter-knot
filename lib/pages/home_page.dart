@@ -26,6 +26,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final child = Column(
       children: [
+        const SizedBox(height: 16),
         Obx(
           () => ListTile(
             leading: const Icon(Icons.favorite),
