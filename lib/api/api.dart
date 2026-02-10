@@ -23,6 +23,21 @@ class AuthApi extends GetConnect {
     httpClient.defaultContentType = 'application/json';
   }
 
+  String _getErrorMessage(Response res) {
+    String msg = res.statusText ?? 'Request failed';
+    try {
+      if (res.body is Map && res.body['error'] != null) {
+        final error = res.body['error'];
+        if (error is Map && error['message'] != null) {
+          msg = error['message'];
+        } else if (error is String) {
+          msg = error;
+        }
+      }
+    } catch (_) {}
+    return msg;
+  }
+
   Future<({String token, AuthorModel user})> login(
       String email, String password) async {
     final res = await post(
@@ -32,8 +47,7 @@ class AuthApi extends GetConnect {
 
     if (res.hasError) {
       debugPrint('Login Error: ${res.statusCode} - ${res.bodyString}');
-      throw ApiException(res.statusText ?? 'Login failed',
-          statusCode: res.statusCode);
+      throw ApiException(_getErrorMessage(res), statusCode: res.statusCode);
     }
 
     final body = res.body as Map<String, dynamic>;
@@ -52,8 +66,7 @@ class AuthApi extends GetConnect {
 
     if (res.hasError) {
       debugPrint('Register Error: ${res.statusCode} - ${res.bodyString}');
-      throw ApiException(res.statusText ?? 'Registration failed',
-          statusCode: res.statusCode);
+      throw ApiException(_getErrorMessage(res), statusCode: res.statusCode);
     }
 
     final body = res.body as Map<String, dynamic>;

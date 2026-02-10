@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
+import 'package:inter_knot/api/api_exception.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/helpers/logger.dart';
@@ -42,10 +43,10 @@ class _LoginPageState extends State<LoginPage> {
       final username = usernameController.text.trim();
 
       if (email.isEmpty || password.isEmpty) {
-        throw Exception('请填写邮箱和密码');
+        throw Exception('请输入邮箱和密码');
       }
       if (isRegister && username.isEmpty) {
-        throw Exception('请填写用户名');
+        throw Exception('请输入用户名');
       }
 
       final res = isRegister
@@ -69,7 +70,21 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       logger.e('Login failed', error: e);
       setState(() {
-        error = e.toString();
+        if (e is ApiException) {
+          if (!isRegister && e.statusCode == 400) {
+            error = '邮箱或密码错误';
+          } else {
+            var msg = e.message;
+            if (msg == 'email must be a valid email') {
+              msg = '邮箱格式不正确';
+            } else if (msg.contains('already taken')) {
+              msg = '用户名或邮箱已被占用';
+            }
+            error = msg;
+          }
+        } else {
+          error = e.toString().replaceAll('Exception: ', '');
+        }
       });
     } finally {
       if (mounted) {
