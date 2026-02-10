@@ -108,10 +108,15 @@ class _HomePageState extends State<HomePage> {
         controller: scrollController,
         child: DraggableScrollbar(
           controller: scrollController,
-          child: SingleChildScrollView(
-            controller: scrollController,
-            physics: const NeverScrollableScrollPhysics(),
-            child: child,
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              scrollbars: false,
+            ),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              physics: const NeverScrollableScrollPhysics(),
+              child: child,
+            ),
           ),
         ),
       );

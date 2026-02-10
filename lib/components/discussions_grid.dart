@@ -160,7 +160,12 @@ class _DiscussionGridState extends State<DiscussionGrid> {
             controller: scrollController,
             child: DraggableScrollbar(
               controller: scrollController,
-              child: child,
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  scrollbars: false,
+                ),
+                child: child,
+              ),
             ),
           );
         }

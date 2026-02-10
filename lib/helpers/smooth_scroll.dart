@@ -187,7 +187,12 @@ class AdaptiveSmoothScroll extends StatelessWidget {
         scrollSpeed: scrollSpeed,
         child: DraggableScrollbar(
           controller: controller,
-          child: builder(context, const NeverScrollableScrollPhysics()),
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              scrollbars: false,
+            ),
+            child: builder(context, const NeverScrollableScrollPhysics()),
+          ),
         ),
       );
     }
