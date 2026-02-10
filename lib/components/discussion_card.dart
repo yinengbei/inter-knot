@@ -27,56 +27,27 @@ class DiscussionCard extends StatefulWidget {
 }
 
 class _DiscussionCardState extends State<DiscussionCard>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  double elevation = 1.0;
-  late final AnimationController _borderController;
-  late final Animation<Color?> _borderAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _borderController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _borderAnimation = ColorTween(
-      begin: Colors.black,
-      end: const Color.fromARGB(164, 0, 255, 0), // Pure Neon Green
-    ).animate(_borderController);
-  }
-
-  @override
-  void dispose() {
-    _borderController.dispose();
-    super.dispose();
-  }
-
+    with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final isCompact = MediaQuery.of(context).size.width < 640;
 
-    final child = AnimatedBuilder(
-      animation: _borderController,
-      builder: (context, child) {
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          elevation: elevation,
-          color: const Color(0xff222222),
-          shape: RoundedRectangleBorder(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
-            ),
-            side: BorderSide(
-              width: 4,
-              color: _borderAnimation.value ?? Colors.black,
-            ),
-          ),
-          child: child,
-        );
-      },
+    final child = Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 1,
+      color: const Color(0xff222222),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomLeft: Radius.circular(16),
+        ),
+        side: BorderSide(
+          width: 4,
+          color: Colors.black,
+        ),
+      ),
       child: Obx(() {
         if (!c.canVisit(widget.discussion, widget.hData.isPin)) {
           return AspectRatio(
@@ -106,23 +77,7 @@ class _DiscussionCardState extends State<DiscussionCard>
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           hoverColor: Colors.transparent,
-          onTap: () {
-            _borderController.forward().then((_) {
-              if (mounted) _borderController.reverse();
-            });
-            widget.onTap?.call();
-          },
-          onTapDown: (_) {
-            setState(() => elevation = 4);
-            _borderController.forward();
-          },
-          onTapUp: (_) {
-            setState(() => elevation = 1);
-          },
-          onTapCancel: () {
-            setState(() => elevation = 1);
-            _borderController.reverse();
-          },
+          onTap: widget.onTap,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
