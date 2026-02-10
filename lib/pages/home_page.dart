@@ -99,17 +99,20 @@ class _HomePageState extends State<HomePage> {
       ],
     );
 
-    // Desktop/expanded layout uses SmoothScroll with NeverScrollableScrollPhysics
+    // Desktop/expanded layout uses SmoothScroll with DraggableScrollbar
     // Compact layout uses standard scrolling
     final isCompact = MediaQuery.of(context).size.width < 640;
 
     if (!isCompact) {
       return SmoothScroll(
         controller: scrollController,
-        child: SingleChildScrollView(
+        child: DraggableScrollbar(
           controller: scrollController,
-          physics: const NeverScrollableScrollPhysics(),
-          child: child,
+          child: SingleChildScrollView(
+            controller: scrollController,
+            physics: const NeverScrollableScrollPhysics(),
+            child: child,
+          ),
         ),
       );
     }

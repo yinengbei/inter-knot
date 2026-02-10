@@ -158,7 +158,10 @@ class _DiscussionGridState extends State<DiscussionGrid> {
         if (!isCompact) {
           return SmoothScroll(
             controller: scrollController,
-            child: child,
+            child: DraggableScrollbar(
+              controller: scrollController,
+              child: child,
+            ),
           );
         }
         return child;
