@@ -164,7 +164,10 @@ class _SearchPageState extends State<SearchPage>
                       borderRadius: BorderRadius.circular(28),
                       onTap: () {
                         if (c.isLogin.value) {
-                          Get.to(() => const CreateDiscussionPage());
+                          Get.to(
+                            () => const CreateDiscussionPage(),
+                            routeName: '/create_discussion',
+                          );
                         } else {
                           showGeneralDialog(
                             context: context,

@@ -150,9 +150,39 @@ class MyHomePage extends GetView<Controller> {
                       customBorder: const CircleBorder(),
                       onTap: () {
                         if (controller.isLogin.value) {
-                          Get.to(() => const CreateDiscussionPage());
+                          Get.to(
+                            () => const CreateDiscussionPage(),
+                            routeName: '/create_discussion',
+                          );
                         } else {
-                          Get.to(() => const LoginPage());
+                          showGeneralDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            barrierLabel: '取消',
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) {
+                              return const LoginPage();
+                            },
+                            transitionDuration:
+                                const Duration(milliseconds: 300),
+                            transitionBuilder: (context, animation,
+                                secondaryAnimation, child) {
+                              final curvedAnimation = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutQuart,
+                              );
+                              return FadeTransition(
+                                opacity: curvedAnimation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0.05, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(curvedAnimation),
+                                  child: RepaintBoundary(child: child),
+                                ),
+                              );
+                            },
+                          );
                         }
                       },
                       child: const SizedBox(

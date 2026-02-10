@@ -76,13 +76,16 @@ class _DiscussionPageState extends State<DiscussionPage> {
     // Delay initial loading until transition animation completes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final route = ModalRoute.of(context);
-      if (route != null && route.animation != null && !route.animation!.isCompleted) {
+      if (route != null &&
+          route.animation != null &&
+          !route.animation!.isCompleted) {
         void listener(AnimationStatus status) {
           if (status == AnimationStatus.completed) {
             route.animation!.removeStatusListener(listener);
             _startInitialLoad();
           }
         }
+
         route.animation!.addStatusListener(listener);
       } else {
         _startInitialLoad();
@@ -671,7 +674,31 @@ class _DiscussionActionButtonsState extends State<DiscussionActionButtons>
     }
 
     if (!c.isLogin.value) {
-      Get.to(() => const LoginPage());
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '取消',
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return const LoginPage();
+        },
+        transitionDuration: 300.ms,
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutQuart,
+          );
+          return FadeTransition(
+            opacity: curvedAnimation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0.05, 0.0),
+                end: Offset.zero,
+              ).animate(curvedAnimation),
+              child: RepaintBoundary(child: child),
+            ),
+          );
+        },
+      );
       return;
     }
 

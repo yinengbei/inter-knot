@@ -32,7 +32,10 @@ class _HomePageState extends State<HomePage> {
           () => ListTile(
             leading: const Icon(Icons.favorite),
             title: const Text('喜欢'),
-            onTap: () => Get.to(() => const LikedPage()),
+            onTap: () => Get.to(
+              () => const LikedPage(),
+              routeName: '/liked',
+            ),
             subtitle: Text(
               '共 ${c.bookmarks.length} 项',
               style: const TextStyle(color: Color(0xff808080)),
@@ -43,7 +46,10 @@ class _HomePageState extends State<HomePage> {
           () => ListTile(
             leading: const Icon(Icons.history),
             title: const Text('历史记录'),
-            onTap: () => Get.to(() => const HistoryPage()),
+            onTap: () => Get.to(
+              () => const HistoryPage(),
+              routeName: '/history',
+            ),
             subtitle: Text(
               '共 ${c.history.length} 项',
               style: const TextStyle(color: Color(0xff808080)),
