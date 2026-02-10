@@ -329,13 +329,23 @@ class Controller extends GetxController {
   final selectedIndex = 0.obs;
   final pageController = PageController();
 
-  Future<void> animateToPage(int index) {
+  Future<void> animateToPage(int index, {bool animate = false}) {
     selectedIndex.value = index;
-    return pageController.animateToPage(
-      index,
-      duration: 0.5.s,
-      curve: Curves.ease,
-    );
+    if (animate) {
+      return pageController.animateToPage(
+        index,
+        duration: 0.5.s,
+        curve: Curves.ease,
+      );
+    } else {
+      if (pageController.hasClients) {
+        pageController.jumpToPage(index);
+      } else {
+        // Desktop/Compact mode where PageView is not used
+        curPage.value = index;
+      }
+      return Future.value();
+    }
   }
 
   bool isFetchPinDiscussions = true;

@@ -110,13 +110,13 @@ class MyAppBar extends StatelessWidget {
                           isSelected: page == 0,
                           onTap: () {
                             if (c.curPage() == 0) c.refreshSearchData();
-                            c.animateToPage(0);
+                            c.animateToPage(0, animate: false);
                           },
                         ),
                         MyTab(
                           text: '我的',
                           isSelected: page == 1,
-                          onTap: () => c.animateToPage(1),
+                          onTap: () => c.animateToPage(1, animate: false),
                         ),
                       ],
                     );

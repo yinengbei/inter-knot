@@ -133,19 +133,18 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                         transitionDuration: 300.ms,
                         transitionBuilder:
                             (context, animaton1, secondaryAnimation, child) {
+                          final curvedAnimation = CurvedAnimation(
+                            parent: animaton1,
+                            curve: Curves.easeOutQuart,
+                          );
                           return FadeTransition(
-                            opacity: animaton1,
+                            opacity: curvedAnimation,
                             child: SlideTransition(
                               position: Tween(
                                 begin: const Offset(0.1, 0.0),
                                 end: Offset.zero,
-                              ).animate(
-                                CurvedAnimation(
-                                  parent: animaton1,
-                                  curve: Curves.ease,
-                                ),
-                              ),
-                              child: child,
+                              ).animate(curvedAnimation),
+                              child: RepaintBoundary(child: child),
                             ),
                           );
                         },

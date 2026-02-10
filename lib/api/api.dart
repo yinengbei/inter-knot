@@ -13,7 +13,6 @@ import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:inter_knot/models/release.dart';
 import 'package:inter_knot/models/report_comment.dart';
-import 'package:inter_knot/pages/login_page.dart';
 
 class AuthApi extends GetConnect {
   @override
@@ -107,7 +106,7 @@ class BaseConnect extends GetConnect {
         box.remove('access_token');
         // Do NOT redirect to login page automatically, let the UI handle the unauthenticated state
         // or let the user choose to login again.
-        // Get.offAll(() => const LoginPage()); 
+        // Get.offAll(() => const LoginPage());
       }
       return rep;
     });

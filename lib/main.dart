@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:inter_knot/api/api.dart';
+import 'package:inter_knot/components/fade_indexed_stack.dart';
 import 'package:inter_knot/components/my_app_bar.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/app_scroll_behavior.dart';
@@ -118,7 +119,7 @@ class MyHomePage extends GetView<Controller> {
                   child: InkWell(
                     splashColor: Colors.transparent,
                     highlightColor: Colors.transparent,
-                    onTap: () => controller.animateToPage(0),
+                    onTap: () => controller.animateToPage(0, animate: true),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -194,7 +195,7 @@ class MyHomePage extends GetView<Controller> {
                   child: InkWell(
                     splashColor: Colors.transparent,
                     highlightColor: Colors.transparent,
-                    onTap: () => controller.animateToPage(1),
+                    onTap: () => controller.animateToPage(1, animate: true),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -229,12 +230,14 @@ class MyHomePage extends GetView<Controller> {
         children: [
           const MyAppBar(),
           Expanded(
-            child: PageView(
-              controller: controller.pageController,
-              children: const [
-                SearchPage(),
-                HomePage(),
-              ],
+            child: Obx(
+              () => FadeIndexedStack(
+                index: controller.selectedIndex.value,
+                children: const [
+                  SearchPage(),
+                  HomePage(),
+                ],
+              ),
             ),
           ),
         ],
