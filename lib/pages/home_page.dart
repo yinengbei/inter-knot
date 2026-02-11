@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/helpers/smooth_scroll.dart';
@@ -33,6 +34,74 @@ class _HomePageState extends State<HomePage>
     final child = Column(
       children: [
         const SizedBox(height: 16),
+        Obx(() {
+          final user = c.user.value;
+          final isLogin = c.isLogin.value;
+          return Card(
+            color: const Color(0xff1E1E1E),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Stack(
+                    children: [
+                      Avatar(
+                        user?.avatar,
+                        size: 64,
+                        onTap: isLogin ? c.pickAndUploadAvatar : null,
+                      ),
+                      if (c.isUploadingAvatar.value)
+                        const Positioned.fill(
+                          child: ColoredBox(
+                            color: Color(0x66000000),
+                            child: Center(
+                              child: SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.name ?? '未登录',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (isLogin) ...[
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: c.pickAndUploadAvatar,
+                            child: Text(
+                              '点击上传头像',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
         Obx(
           () => Card(
             color: const Color(0xff1E1E1E),
