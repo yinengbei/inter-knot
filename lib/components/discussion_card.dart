@@ -136,7 +136,7 @@ class _DiscussionCardState extends State<DiscussionCard>
                     fontSize: 15,
                   ),
                   overflow: TextOverflow.ellipsis,
-                  maxLines: 3,
+                  maxLines: 1,
                 ),
               ),
             ],
