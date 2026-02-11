@@ -83,6 +83,15 @@ class _HomePageState extends State<HomePage>
                         ),
                         if (isLogin) ...[
                           const SizedBox(height: 4),
+                          Text(
+                            'UID: ${user?.userId ?? "未知"}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
                           InkWell(
                             onTap: c.pickAndUploadAvatar,
                             child: Text(
@@ -90,6 +99,7 @@ class _HomePageState extends State<HomePage>
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[400],
+                                decoration: TextDecoration.underline,
                               ),
                             ),
                           ),
