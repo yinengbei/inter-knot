@@ -365,7 +365,7 @@ class Controller extends GetxController {
     } finally {
       isSearching(false);
     }
-  });
+  }, Duration.zero);
 
   final searchCache = <String?>{};
   Future<void> searchData() async {
