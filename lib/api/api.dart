@@ -230,7 +230,7 @@ class Api extends BaseConnect {
 
     final queryParams = _buildPaginationQuery(
       start: start,
-      sort: 'createdAt:desc',
+      sort: 'updatedAt:desc',
       filters: filters,
     );
 
