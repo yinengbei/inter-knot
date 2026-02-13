@@ -77,6 +77,7 @@ class MyAppBar extends StatelessWidget {
                         ),
                         MyTab(
                           text: '我的',
+                          last: true,
                           isSelected: page == 1,
                           onTap: () => c.animateToPage(1, animate: false),
                         ),

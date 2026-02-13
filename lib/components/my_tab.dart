@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inter_knot/components/click_region.dart';
+import 'package:inter_knot/components/tab_highlight.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 
 class MyTab extends StatelessWidget {
@@ -25,10 +26,16 @@ class MyTab extends StatelessWidget {
     return ClickRegion(
       onTap: onTap,
       child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
         children: [
-          if (first) Container(),
-          if (last) Container(),
-          if (!first && !last) Container(),
+          if (isSelected)
+            Positioned.fill(
+              child: TabHighlight(
+                isFirst: first,
+                isLast: last,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
             child: Row(
@@ -38,7 +45,8 @@ class MyTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? const Color(0xffFBC02D) : Colors.white,
+                    fontStyle: FontStyle.italic,
+                    color: isSelected ? Colors.black : Colors.white,
                   ),
                 ),
                 AnimatedContainer(

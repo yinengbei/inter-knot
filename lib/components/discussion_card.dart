@@ -23,32 +23,78 @@ class DiscussionCard extends StatefulWidget {
 }
 
 class _DiscussionCardState extends State<DiscussionCard>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+  bool _isHovering = false;
+  late final AnimationController _breathingController;
+  late final Animation<Color?> _breathingAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Controller for the breathing effect (yellow <-> lemon)
+    _breathingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+
+    _breathingAnimation = ColorTween(
+      begin: const Color(0xfffbfe00),
+      end: const Color(0xffdcfe00),
+    ).animate(CurvedAnimation(
+      parent: _breathingController,
+      curve: Curves.linear,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _breathingController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final isCompact = MediaQuery.of(context).size.width < 640;
 
-    final child = Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 1,
-      color: const Color(0xff222222),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-          bottomLeft: Radius.circular(16),
-        ),
-        side: BorderSide(
-          width: 4,
-          color: Colors.black,
-        ),
-      ),
-      child: InkWell(
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: Colors.transparent,
-        onTap: widget.onTap,
+    final child = MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovering = true);
+        _breathingController.repeat(reverse: true);
+      },
+      onExit: (_) {
+        setState(() => _isHovering = false);
+        _breathingController.stop();
+      },
+      child: AnimatedBuilder(
+        animation: _breathingAnimation,
+        builder: (context, child) {
+          return Card(
+            clipBehavior: Clip.antiAlias,
+            elevation: 1,
+            color: const Color(0xff222222),
+            shape: RoundedRectangleBorder(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              side: BorderSide(
+                width: 4,
+                color: _isHovering
+                    ? (_breathingAnimation.value ?? const Color(0xfffbfe00))
+                    : Colors.black,
+              ),
+            ),
+            child: InkWell(
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              onTap: widget.onTap,
+              child: child,
+            ),
+          );
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

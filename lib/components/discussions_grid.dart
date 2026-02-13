@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inter_knot/components/discussion_card.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/controllers/data.dart';
-import 'package:inter_knot/helpers/num2dur.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/smooth_scroll.dart';
 import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/pages/discussion_page.dart';
@@ -25,8 +25,12 @@ class DiscussionGrid extends StatefulWidget {
   State<DiscussionGrid> createState() => _DiscussionGridState();
 }
 
-class _DiscussionGridState extends State<DiscussionGrid> {
+class _DiscussionGridState extends State<DiscussionGrid>
+    with AutomaticKeepAliveClientMixin {
   final scrollController = ScrollController();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -52,6 +56,7 @@ class _DiscussionGridState extends State<DiscussionGrid> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final list = widget.list;
     final fetchData = widget.fetchData;
     final hasNextPage = widget.hasNextPage;
@@ -143,47 +148,12 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                         discussion: snaphost.data!,
                         hData: item,
                         onTap: () async {
-                          final result = await showGeneralDialog(
+                          final result = await showZZZDialog(
                             context: context,
-                            barrierDismissible: true,
-                            barrierLabel: '取消',
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) {
+                            pageBuilder: (context) {
                               return DiscussionPage(
                                 discussion: snaphost.data!,
                                 hData: item,
-                              );
-                            },
-                            transitionDuration: 300.ms,
-                            transitionBuilder: (context, animaton1,
-                                secondaryAnimation, child) {
-                              return AnimatedBuilder(
-                                animation: animaton1,
-                                builder: (context, child) {
-                                  final curve = Curves.easeOutQuart;
-                                  final double value = animaton1.value;
-                                  final double curvedValue =
-                                      curve.transform(value);
-
-                                  Offset translation;
-                                  if (animaton1.status ==
-                                      AnimationStatus.reverse) {
-                                    translation =
-                                        Offset(-0.05 * (1 - curvedValue), 0.0);
-                                  } else {
-                                    translation =
-                                        Offset(0.05 * (1 - curvedValue), 0.0);
-                                  }
-
-                                  return Opacity(
-                                    opacity: curvedValue,
-                                    child: FractionalTranslation(
-                                      translation: translation,
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: RepaintBoundary(child: child),
                               );
                             },
                           );
