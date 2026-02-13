@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:get/get.dart';
@@ -22,6 +24,15 @@ class _SearchPageState extends State<SearchPage>
       keyboardVisibilityController.onChange.listen((visible) {
     if (!visible) FocusManager.instance.primaryFocus?.unfocus();
   });
+
+  Timer? _debounce;
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(seconds: 1), () {
+      c.searchQuery(query);
+    });
+  }
 
   @override
   void dispose() {
@@ -67,6 +78,7 @@ class _SearchPageState extends State<SearchPage>
                 ),
                 child: SearchBar(
                   controller: c.searchController,
+                  onChanged: _onSearchChanged,
                   onSubmitted: c.searchQuery.call,
                   backgroundColor:
                       const WidgetStatePropertyAll(Color(0xff1E1E1E)),

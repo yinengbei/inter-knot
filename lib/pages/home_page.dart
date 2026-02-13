@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/smooth_scroll.dart';
 import 'package:inter_knot/pages/history_page.dart';
 import 'package:inter_knot/pages/liked_page.dart';
+import 'package:inter_knot/pages/my_discussions_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,6 +26,58 @@ class _HomePageState extends State<HomePage>
   void dispose() {
     scrollController.dispose();
     super.dispose();
+  }
+
+  void _showEditUsernameDialog(BuildContext context, String? currentName) {
+    final controller = TextEditingController(text: currentName);
+    showZZZDialog(
+      context: context,
+      pageBuilder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xff1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(
+              color: Color.fromARGB(59, 255, 255, 255),
+              width: 3,
+            ),
+          ),
+          title: const Text('修改用户名', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: '新用户名',
+              hintText: '请输入新用户名',
+              labelStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.grey),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty) {
+                  c.updateUsername(newName);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -72,12 +126,24 @@ class _HomePageState extends State<HomePage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          user?.name ?? '未登录',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              user?.name ?? '未登录',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (isLogin)
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    size: 16, color: Colors.grey),
+                                onPressed: () {
+                                  _showEditUsernameDialog(context, user?.name);
+                                },
+                              ),
+                          ],
                         ),
                         if (isLogin) ...[
                           const SizedBox(height: 4),
@@ -110,6 +176,29 @@ class _HomePageState extends State<HomePage>
             ),
           );
         }),
+        Card(
+          color: const Color(0xff1E1E1E),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            leading: const Icon(Icons.article_outlined),
+            title: const Text('我的帖子'),
+            subtitle: Obx(
+              () => Text(
+                '共 ${c.myDiscussionsCount.value} 项',
+                style: const TextStyle(color: Color(0xff808080)),
+              ),
+            ),
+            onTap: () async {
+              if (await c.ensureLogin()) {
+                Get.to(
+                  () => const MyDiscussionsPage(),
+                  routeName: '/my-discussions',
+                );
+              }
+            },
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+          ),
+        ),
         Obx(
           () => Card(
             color: const Color(0xff1E1E1E),

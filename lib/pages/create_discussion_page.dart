@@ -11,48 +11,26 @@ import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/click_region.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 
+import 'package:inter_knot/models/discussion.dart';
+import 'package:markdown/markdown.dart' as md;
+
 class CreateDiscussionPage extends StatefulWidget {
-  const CreateDiscussionPage({super.key});
+  const CreateDiscussionPage({super.key, this.discussion});
 
-  static Future<void> show(BuildContext context) {
-    return showGeneralDialog(
+  final DiscussionModel? discussion;
+
+  static Future<bool?> show(BuildContext context,
+      {DiscussionModel? discussion}) {
+    return showZZZDialog<bool>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: '取消',
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return const CreateDiscussionPage();
-      },
-      transitionDuration: 300.ms,
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return AnimatedBuilder(
-          animation: animation,
-          builder: (context, child) {
-            final curve = Curves.easeOutQuart;
-            final double value = animation.value;
-            final double curvedValue = curve.transform(value);
-
-            Offset translation;
-            if (animation.status == AnimationStatus.reverse) {
-              translation = Offset(-0.05 * (1 - curvedValue), 0.0);
-            } else {
-              translation = Offset(0.05 * (1 - curvedValue), 0.0);
-            }
-
-            return Opacity(
-              opacity: curvedValue,
-              child: FractionalTranslation(
-                translation: translation,
-                child: child,
-              ),
-            );
-          },
-          child: RepaintBoundary(child: child),
-        );
+      pageBuilder: (context) {
+        return CreateDiscussionPage(discussion: discussion);
       },
     );
   }
@@ -319,6 +297,28 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     if (kIsWeb) {
       _setupPasteListener();
     }
+
+    if (widget.discussion != null) {
+      titleController.text = widget.discussion!.title;
+      // Convert raw markdown to Delta for Quill
+      try {
+        final mdDocument = md.Document(
+          encodeHtml: false,
+          extensionSet: md.ExtensionSet.gitHubWeb,
+        );
+        final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
+        final delta = mdToDelta.convert(widget.discussion!.rawBodyText);
+        _quillController.document = quill.Document.fromDelta(delta);
+      } catch (e) {
+        debugPrint('Markdown parsing failed: $e');
+        _quillController.document.insert(0, widget.discussion!.rawBodyText);
+      }
+
+      // Load covers
+      for (final cover in widget.discussion!.coverImages) {
+        _uploadedImages.add((id: '', url: cover.url));
+      }
+    }
   }
 
   String _slugify(String input) {
@@ -427,35 +427,49 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     });
 
     try {
-      var slug = _slugify(title);
-      final user = c.user.value;
-      final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
-      if (authorId == null || authorId.isEmpty) {
-        throw Exception('无法关联作者，请重新登录后再试');
-      }
+      Response<Map<String, dynamic>> res;
 
-      var res = await api.createArticle(
-        title: title,
-        text: markdownText,
-        slug: slug,
-        coverId: finalCoverId,
-        authorId: authorId,
-      );
+      if (widget.discussion != null) {
+        // Edit Mode
+        res = await api.updateDiscussion(
+          id: widget.discussion!.id,
+          title: title,
+          text: markdownText,
+          coverId: finalCoverId,
+        );
+      } else {
+        // Create Mode
+        var slug = _slugify(title);
+        final user = c.user.value;
+        final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
+        if (authorId == null || authorId.isEmpty) {
+          throw Exception('无法关联作者，请重新登录后再试');
+        }
 
-      // Check for error in REST format (error object) or GraphQL format (errors list)
-      final resBody = res.body;
-      if (resBody != null) {
-        final error = resBody['error'];
-        final errors = resBody['errors'];
-        if ((error != null || errors != null) && _isSlugUniqueError(resBody)) {
-          slug = _slugifyUnique(title);
-          res = await api.createArticle(
-            title: title,
-            text: markdownText,
-            slug: slug,
-            coverId: finalCoverId,
-            authorId: authorId,
-          );
+        res = await api.createArticle(
+          title: title,
+          text: markdownText,
+          slug: slug,
+          coverId: finalCoverId,
+          authorId: authorId,
+        );
+
+        // Check for error in REST format (error object) or GraphQL format (errors list)
+        final resBody = res.body;
+        if (resBody != null) {
+          final error = resBody['error'];
+          final errors = resBody['errors'];
+          if ((error != null || errors != null) &&
+              _isSlugUniqueError(resBody)) {
+            slug = _slugifyUnique(title);
+            res = await api.createArticle(
+              title: title,
+              text: markdownText,
+              slug: slug,
+              coverId: finalCoverId,
+              authorId: authorId,
+            );
+          }
         }
       }
 
@@ -495,8 +509,17 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         }
       }
 
-      Get.back();
-      Get.rawSnackbar(message: '发帖成功');
+      if (widget.discussion != null) {
+        widget.discussion!.title = title;
+        widget.discussion!.rawBodyText = markdownText;
+        widget.discussion!.bodyHTML = md.markdownToHtml(
+          markdownText,
+          extensionSet: md.ExtensionSet.gitHubWeb,
+        );
+      }
+
+      Get.back(result: true);
+      Get.rawSnackbar(message: widget.discussion != null ? '修改成功' : '发帖成功');
       // Refresh list
       c.refreshSearchData();
     } catch (e) {

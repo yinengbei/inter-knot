@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:inter_knot/api/api.dart'; // Import Api
 import 'package:inter_knot/api/api_exception.dart';
 import 'package:inter_knot/helpers/box.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/logger.dart';
 import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/helpers/throttle.dart';
@@ -41,6 +42,7 @@ class Controller extends GetxController {
   final isLogin = false.obs;
   final user = Rx<AuthorModel?>(null); // Author -> AuthorModel
   final authorId = RxnString();
+  final myDiscussionsCount = 0.obs;
   final isUploadingAvatar = false.obs;
 
   final bookmarks = <HDataModel>{}.obs;
@@ -154,6 +156,12 @@ class Controller extends GetxController {
       }
       user.refresh();
       await updateUserAvatarFromDiscussionsCache();
+
+      // Refresh discussion count
+      final aid = authorId.value ?? u.authorId;
+      if (aid != null && aid.isNotEmpty) {
+        myDiscussionsCount.value = await api.getUserDiscussionCount(aid);
+      }
     } catch (e) {
       logger.e('Failed to refresh self user info', error: e);
     }
@@ -429,44 +437,9 @@ class Controller extends GetxController {
     if (isLogin.value) return true;
     final context = Get.context;
     if (context != null) {
-      await showGeneralDialog(
+      await showZZZDialog(
         context: context,
-        barrierDismissible: true,
-        barrierLabel: '取消',
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return const LoginPage();
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-        transitionBuilder: (context, animation, secondaryAnimation, child) {
-          return AnimatedBuilder(
-            animation: animation,
-            builder: (context, child) {
-              final curve = Curves.easeOutQuart;
-              final double value = animation.value;
-              final double curvedValue = curve.transform(value);
-
-              // 进：右(0.05) -> 中(0.0)
-              // 出：中(0.0) -> 左(-0.05)
-              Offset translation;
-              if (animation.status == AnimationStatus.reverse) {
-                // 退出阶段：value 从 1.0 -> 0.0
-                translation = Offset(-0.05 * (1 - curvedValue), 0.0);
-              } else {
-                // 进入阶段：value 从 0.0 -> 1.0
-                translation = Offset(0.05 * (1 - curvedValue), 0.0);
-              }
-
-              return Opacity(
-                opacity: curvedValue,
-                child: FractionalTranslation(
-                  translation: translation,
-                  child: child,
-                ),
-              );
-            },
-            child: RepaintBoundary(child: child),
-          );
-        },
+        pageBuilder: (context) => const LoginPage(),
       );
     }
     return isLogin.value;
@@ -517,6 +490,52 @@ class Controller extends GetxController {
       Get.rawSnackbar(message: '头像上传失败: $e');
     } finally {
       isUploadingAvatar(false);
+    }
+  }
+
+  Future<void> updateUsername(String newName) async {
+    if (isLogin.isFalse) {
+      Get.rawSnackbar(message: '请先登录');
+      return;
+    }
+
+    final curUser = user.value;
+    if (curUser == null || curUser.userId == null) {
+      Get.rawSnackbar(message: '用户信息异常');
+      return;
+    }
+
+    if (curUser.login == newName) return;
+
+    try {
+      // 1. Update User (username)
+      final updatedUser = await api.updateUser(
+        curUser.userId!,
+        {'username': newName},
+      );
+
+      // 2. Update Author (name) if exists
+      final authorIdVal = authorId.value ?? curUser.authorId;
+      if (authorIdVal != null && authorIdVal.isNotEmpty) {
+        try {
+          await api.updateAuthor(
+            authorId: authorIdVal,
+            data: {'name': newName},
+          );
+        } catch (e) {
+          logger.w('Failed to update Author name', error: e);
+        }
+      }
+
+      // 3. Update local state
+      updatedUser.avatar = curUser.avatar;
+      user(updatedUser);
+      await ensureAuthorForUser(updatedUser);
+
+      Get.rawSnackbar(message: '用户名已更新');
+    } catch (e) {
+      logger.e('Update username failed', error: e);
+      Get.rawSnackbar(message: '用户名更新失败: $e');
     }
   }
 }

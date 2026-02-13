@@ -12,10 +12,12 @@ import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/logger.dart';
 import 'package:inter_knot/helpers/smooth_scroll.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
+import 'package:inter_knot/pages/create_discussion_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class DiscussionPage extends StatefulWidget {
@@ -299,7 +301,6 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                           ),
                                           DiscussionDetailBox(
                                             discussion: widget.discussion,
-                                            hData: widget.hData,
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.symmetric(
@@ -311,6 +312,8 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                   hData: widget.hData,
                                                   onCommentAdded:
                                                       _scrollToBottom,
+                                                  onEditSuccess: () =>
+                                                      setState(() {}),
                                                 ),
                                                 const SizedBox(height: 16),
                                                 const Divider(),
@@ -409,7 +412,6 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                           DiscussionDetailBox(
                                                             discussion: widget
                                                                 .discussion,
-                                                            hData: widget.hData,
                                                           ),
                                                         ],
                                                       ),
@@ -493,6 +495,8 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                                       hData: widget.hData,
                                                       onCommentAdded:
                                                           _scrollToBottom,
+                                                      onEditSuccess: () =>
+                                                          setState(() {}),
                                                     ),
                                                   ),
                                                 ],
@@ -525,11 +529,9 @@ class DiscussionDetailBox extends StatefulWidget {
   const DiscussionDetailBox({
     super.key,
     required this.discussion,
-    required this.hData,
   });
 
   final DiscussionModel discussion;
-  final HDataModel hData;
 
   @override
   State<DiscussionDetailBox> createState() => _DiscussionDetailBoxState();
@@ -586,11 +588,13 @@ class DiscussionActionButtons extends StatefulWidget {
     required this.discussion,
     required this.hData,
     this.onCommentAdded,
+    this.onEditSuccess,
   });
 
   final DiscussionModel discussion;
   final HDataModel hData;
   final VoidCallback? onCommentAdded;
+  final VoidCallback? onEditSuccess;
 
   @override
   State<DiscussionActionButtons> createState() =>
@@ -706,6 +710,98 @@ class _DiscussionActionButtonsState extends State<DiscussionActionButtons>
     setState(() => _isWriting = false);
     _controller.forward();
     _focusNode.unfocus();
+  }
+
+  Future<void> _handleDelete() async {
+    final confirmed = await showZZZDialog<bool>(
+      context: context,
+      pageBuilder: (context) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xff1E1E1E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xff313132),
+                  width: 4,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '确认删除',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '确定要删除这个帖子吗？此操作不可恢复。',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('取消'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text(
+                          '删除',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        final res = await api.deleteDiscussion(widget.discussion.id);
+        if (res.hasError) {
+          Get.rawSnackbar(message: '删除失败: ${res.statusText}');
+        } else {
+          if (!mounted) return;
+          // Close detail page first
+          Navigator.of(context).pop(true);
+          Get.rawSnackbar(message: '帖子已删除');
+          // Refresh lists
+          c.searchResult.refresh();
+          c.bookmarks.refresh();
+          c.history.refresh();
+        }
+      } catch (e) {
+        Get.rawSnackbar(message: '删除出错: $e');
+      }
+    }
+  }
+
+  void _handleEdit() async {
+    final result = await CreateDiscussionPage.show(
+      context,
+      discussion: widget.discussion,
+    );
+    if (result == true) {
+      widget.onEditSuccess?.call();
+    }
   }
 
   @override
@@ -883,6 +979,43 @@ class _DiscussionActionButtonsState extends State<DiscussionActionButtons>
                       ),
                     );
                   }),
+                  if (c.user.value?.login ==
+                      widget.discussion.author.login) ...[
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: '编辑',
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff222222),
+                          borderRadius: BorderRadius.circular(maxRadius),
+                          border: Border.all(
+                              color: const Color(0xff2D2D2D), width: 4),
+                        ),
+                        child: ClickRegion(
+                          onTap: _handleEdit,
+                          child: const Icon(Icons.edit, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: '删除',
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff222222),
+                          borderRadius: BorderRadius.circular(maxRadius),
+                          border: Border.all(
+                              color: const Color(0xff2D2D2D), width: 4),
+                        ),
+                        child: ClickRegion(
+                          onTap: _handleDelete,
+                          child: const Icon(Icons.delete, color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -921,21 +1054,43 @@ class _CoverState extends State<Cover> {
     }
 
     if (covers.length == 1) {
+      final url = covers.first;
+      final isGif = url.toLowerCase().contains('.gif');
       return ClickRegion(
-        onTap: () => launchUrlString(covers.first),
-        child: CachedNetworkImage(
-          imageUrl: covers.first,
-          fit: BoxFit.contain,
-          progressIndicatorBuilder: (context, url, p) {
-            return Center(
-              child: CircularProgressIndicator(
-                value: p.totalSize == null ? null : p.downloaded / p.totalSize!,
+        onTap: () => launchUrlString(url),
+        child: isGif
+            ? Image.network(
+                url,
+                fit: BoxFit.contain,
+                gaplessPlayback: true,
+                loadingBuilder: (context, child, p) {
+                  if (p == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: p.expectedTotalBytes != null
+                          ? p.cumulativeBytesLoaded / p.expectedTotalBytes!
+                          : null,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) =>
+                    Assets.images.defaultCover.image(fit: BoxFit.contain),
+              )
+            : CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.contain,
+                progressIndicatorBuilder: (context, url, p) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: p.totalSize == null
+                          ? null
+                          : p.downloaded / p.totalSize!,
+                    ),
+                  );
+                },
+                errorWidget: (context, url, error) =>
+                    Assets.images.defaultCover.image(fit: BoxFit.contain),
               ),
-            );
-          },
-          errorWidget: (context, url, error) =>
-              Assets.images.defaultCover.image(fit: BoxFit.contain),
-        ),
       );
     }
 
@@ -956,28 +1111,51 @@ class _CoverState extends State<Cover> {
               },
               itemBuilder: (context, index) {
                 final url = covers[index];
+                final isGif = url.toLowerCase().endsWith('.gif');
                 return ClickRegion(
                   onTap: () => launchUrlString(url),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      progressIndicatorBuilder: (context, url, p) {
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: p.totalSize == null
-                                ? null
-                                : p.downloaded / p.totalSize!,
+                    child: isGif
+                        ? Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, p) {
+                              if (p == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: p.expectedTotalBytes != null
+                                      ? p.cumulativeBytesLoaded /
+                                          p.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: Colors.grey[800],
+                              child: const Icon(Icons.broken_image,
+                                  color: Colors.white),
+                            ),
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: url,
+                            fit: BoxFit.cover,
+                            progressIndicatorBuilder: (context, url, p) {
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: p.totalSize == null
+                                      ? null
+                                      : p.downloaded / p.totalSize!,
+                                ),
+                              );
+                            },
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[800],
+                              child: const Icon(Icons.broken_image,
+                                  color: Colors.white),
+                            ),
                           ),
-                        );
-                      },
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[800],
-                        child:
-                            const Icon(Icons.broken_image, color: Colors.white),
-                      ),
-                    ),
                   ),
                 );
               },

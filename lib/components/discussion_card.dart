@@ -173,15 +173,32 @@ class Cover extends StatelessWidget {
 
     return AspectRatio(
       aspectRatio: displayAspectRatio,
-      child: CachedNetworkImage(
-        imageUrl: discussion.cover!,
-        fit: BoxFit.cover,
-        alignment: Alignment.topCenter,
-        placeholder: (context, url) => const ColoredBox(color: Colors.white10),
-        errorWidget: (context, url, error) => Assets.images.defaultCover.image(
-          fit: BoxFit.cover,
-        ),
-      ),
+      child: discussion.cover!.toLowerCase().contains('.gif')
+          ? Image.network(
+              discussion.cover!,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+              alignment: Alignment.topCenter,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const ColoredBox(color: Colors.white10);
+              },
+              errorBuilder: (context, error, stackTrace) =>
+                  Assets.images.defaultCover.image(
+                fit: BoxFit.cover,
+              ),
+            )
+          : CachedNetworkImage(
+              imageUrl: discussion.cover!,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              placeholder: (context, url) =>
+                  const ColoredBox(color: Colors.white10),
+              errorWidget: (context, url, error) =>
+                  Assets.images.defaultCover.image(
+                fit: BoxFit.cover,
+              ),
+            ),
     );
   }
 }

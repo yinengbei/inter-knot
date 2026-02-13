@@ -29,7 +29,23 @@ class _DiscussionGridState extends State<DiscussionGrid> {
   final scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!widget.hasNextPage) return;
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.position.pixels;
+    if (maxScroll - currentScroll <= 100) {
+      widget.fetchData?.call();
+    }
+  }
+
+  @override
   void dispose() {
+    scrollController.removeListener(_onScroll);
     scrollController.dispose();
     super.dispose();
   }
@@ -100,10 +116,14 @@ class _DiscussionGridState extends State<DiscussionGrid> {
               itemBuilder: (context, index) {
                 if (index == list.length) {
                   if (hasNextPage) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(8),
-                        child: CircularProgressIndicator(),
+                        padding: const EdgeInsets.all(8),
+                        child: Image.asset(
+                          'assets/images/Bangboo.gif',
+                          width: 80,
+                          height: 80,
+                        ),
                       ),
                     );
                   }
@@ -122,8 +142,8 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                       return DiscussionCard(
                         discussion: snaphost.data!,
                         hData: item,
-                        onTap: () {
-                          showGeneralDialog(
+                        onTap: () async {
+                          final result = await showGeneralDialog(
                             context: context,
                             barrierDismissible: true,
                             barrierLabel: '取消',
@@ -167,6 +187,16 @@ class _DiscussionGridState extends State<DiscussionGrid> {
                               );
                             },
                           );
+
+                          if (result == true) {
+                            if (widget.list is RxSet) {
+                              widget.list.remove(item);
+                            } else {
+                              setState(() {
+                                widget.list.remove(item);
+                              });
+                            }
+                          }
                         },
                       );
                     }

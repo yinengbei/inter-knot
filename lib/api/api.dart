@@ -22,6 +22,9 @@ class AuthApi extends GetConnect {
 
   String _getErrorMessage(Response res) {
     String msg = res.statusText ?? 'Request failed';
+    if (msg.contains('XMLHttpRequest error')) {
+      return '短时间内请求数量过多';
+    }
     try {
       if (res.body is Map && res.body['error'] != null) {
         final error = res.body['error'];
@@ -125,6 +128,18 @@ class BaseConnect extends GetConnect {
         } else if (error is String) {
           message = error;
         }
+      }
+
+      final code = response.statusCode;
+      if (code != null) {
+        final s = code.toString();
+        if (s.startsWith('5') || s.startsWith('6') || s.startsWith('7')) {
+          message = '短时间内请求数量过多';
+        }
+      }
+
+      if (message != null && message.contains('XMLHttpRequest error')) {
+        message = '短时间内请求数量过多';
       }
 
       throw ApiException(message ?? 'Unknown error',
@@ -249,6 +264,58 @@ class Api extends BaseConnect {
       endCursor: (start + ApiConfig.defaultPageSize).toString(),
       hasNextPage: hasNext,
     );
+  }
+
+  Future<PaginationModel<HDataModel>> getUserDiscussions(
+      String authorId, String endCur) async {
+    final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
+
+    final queryParams = _buildPaginationQuery(
+      start: start,
+      sort: 'updatedAt:desc',
+      filters: {'filters[author][documentId][\$eq]': authorId},
+    );
+
+    final res = await get(
+      '/api/articles',
+      query: queryParams,
+    );
+
+    final data = unwrapData<List<dynamic>>(res);
+    final hasNext = data.length >= ApiConfig.defaultPageSize;
+
+    return PaginationModel(
+      nodes: data
+          .map((e) => HDataModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      endCursor: (start + ApiConfig.defaultPageSize).toString(),
+      hasNextPage: hasNext,
+    );
+  }
+
+  Future<int> getUserDiscussionCount(String authorId) async {
+    final res = await get(
+      '/api/articles',
+      query: {
+        'filters[author][documentId][\$eq]': authorId,
+        'pagination[limit]': '1',
+        'fields[0]': 'documentId',
+      },
+    );
+
+    if (res.hasError) return 0;
+
+    final body = res.body;
+    if (body is Map<String, dynamic>) {
+      final meta = body['meta'];
+      if (meta is Map<String, dynamic>) {
+        final pagination = meta['pagination'];
+        if (pagination is Map<String, dynamic>) {
+          return pagination['total'] as int? ?? 0;
+        }
+      }
+    }
+    return 0;
   }
 
   Future<PaginationModel<CommentModel>> getComments(
@@ -440,6 +507,36 @@ class Api extends BaseConnect {
     );
   }
 
+  Future<Response<Map<String, dynamic>>> updateDiscussion({
+    required String id,
+    String? title,
+    String? text,
+    String? slug,
+    dynamic coverId,
+  }) {
+    final Map<String, dynamic> data = {};
+    if (title != null) data['title'] = title;
+    if (text != null) data['text'] = text;
+    if (slug != null) data['slug'] = slug;
+
+    if (coverId != null) {
+      if (coverId is String && coverId.isNotEmpty) {
+        data['cover'] = _coerceId(coverId);
+      } else if (coverId is List && coverId.isNotEmpty) {
+        data['cover'] =
+            coverId.map((e) => e is String ? _coerceId(e) : e).toList();
+      } else if (coverId is List && coverId.isEmpty) {
+        // Clear cover if empty list passed
+        data['cover'] = [];
+      }
+    }
+
+    return put(
+      '/api/articles/$id',
+      {'data': data},
+    );
+  }
+
   Future<String?> findAuthorIdByName(String name) async {
     final res = await get(
       '/api/authors',
@@ -515,6 +612,20 @@ class Api extends BaseConnect {
     }
   }
 
+  Future<void> updateAuthor({
+    required String authorId,
+    required Map<String, dynamic> data,
+  }) async {
+    final res = await put(
+      '/api/authors/$authorId',
+      {'data': data},
+    );
+    if (res.hasError) {
+      debugPrint('UpdateAuthorGeneric Error: ${res.bodyString}');
+      throw ApiException(res.statusText ?? 'Update author failed');
+    }
+  }
+
   Future<String?> ensureAuthorId({
     required String name,
     String? userId,
@@ -568,6 +679,18 @@ class Api extends BaseConnect {
     final data = unwrapData<Map<String, dynamic>>(res);
     final user = AuthorModel.fromJson(data);
     await _fetchAndSetAvatar(user);
+    return user;
+  }
+
+  Future<AuthorModel> updateUser(
+      String userId, Map<String, dynamic> data) async {
+    final res = await put(
+      '/api/users/$userId',
+      data,
+    );
+
+    final body = unwrapData<Map<String, dynamic>>(res);
+    final user = AuthorModel.fromJson(body);
     return user;
   }
 
