@@ -217,7 +217,9 @@ class Api extends BaseConnect {
   }
 
   Future<DiscussionModel> getDiscussion(String id) async {
-    final res = await get(
+    final userId = box.read<String>('userId');
+
+    final articleFuture = get(
       '/api/articles/$id',
       query: {
         'populate[author][populate]': 'avatar',
@@ -228,7 +230,37 @@ class Api extends BaseConnect {
       },
     );
 
+    Future<Response>? readStatusFuture;
+    if (userId != null && userId.isNotEmpty) {
+      readStatusFuture = get(
+        '/api/article-reads',
+        query: {
+          'filters[user][id][\$eq]': userId,
+          'filters[article][documentId][\$eq]': id,
+          'fields[0]': 'isRead',
+        },
+      );
+    }
+
+    final res = await articleFuture;
     final data = unwrapData<Map<String, dynamic>>(res);
+
+    if (readStatusFuture != null) {
+      try {
+        final readRes = await readStatusFuture;
+        final readData = unwrapData<List<dynamic>>(readRes);
+        if (readData.isNotEmpty) {
+          final first = readData.first;
+          if (first is Map) {
+            final isRead = first['isRead'] == true;
+            data['isRead'] = isRead;
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to fetch read status: $e');
+      }
+    }
+
     // Use compute to parse heavy markdown/html in isolate
     return compute(_parseDiscussionSync, data);
   }
@@ -247,6 +279,13 @@ class Api extends BaseConnect {
       start: start,
       sort: 'updatedAt:desc',
       filters: filters,
+      populate: {
+        'populate[author][populate]': 'avatar',
+        'populate[cover][fields][0]': 'url',
+        'populate[cover][fields][1]': 'width',
+        'populate[cover][fields][2]': 'height',
+        'populate[blocks][populate]': '*',
+      },
     );
 
     final res = await get(
@@ -255,6 +294,54 @@ class Api extends BaseConnect {
     );
 
     final data = unwrapData<List<dynamic>>(res);
+
+    // Optimization: Bulk fetch read status
+    final userId = box.read<String>('userId');
+    if (userId != null && userId.isNotEmpty && data.isNotEmpty) {
+      final ids =
+          data.map((e) => e['documentId']).where((e) => e != null).toList();
+      if (ids.isNotEmpty) {
+        final readQuery = <String, String>{
+          'filters[user][id][\$eq]': userId,
+          'populate[article][fields][0]': 'documentId',
+          'fields[0]': 'isRead',
+          'pagination[limit]': '${ids.length}',
+        };
+        for (var i = 0; i < ids.length; i++) {
+          readQuery['filters[article][documentId][\$in][$i]'] =
+              ids[i].toString();
+        }
+
+        try {
+          final readRes = await get('/api/article-reads', query: readQuery);
+          final readList = unwrapData<List<dynamic>>(readRes);
+          final readMap = <String, bool>{};
+          for (final r in readList) {
+            if (r is Map) {
+              final article = r['article'];
+              final isRead = r['isRead'] == true;
+              String? aId;
+              if (article is Map) aId = article['documentId'];
+              if (aId != null && isRead) {
+                readMap[aId] = true;
+              }
+            }
+          }
+
+          for (final d in data) {
+            if (d is Map) {
+              final id = d['documentId'];
+              if (readMap.containsKey(id)) {
+                d['isRead'] = true;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Search Read Status Error: $e');
+        }
+      }
+    }
+
     final hasNext = data.length >= ApiConfig.defaultPageSize;
 
     return PaginationModel(
@@ -274,6 +361,13 @@ class Api extends BaseConnect {
       start: start,
       sort: 'updatedAt:desc',
       filters: {'filters[author][documentId][\$eq]': authorId},
+      populate: {
+        'populate[author][populate]': 'avatar',
+        'populate[cover][fields][0]': 'url',
+        'populate[cover][fields][1]': 'width',
+        'populate[cover][fields][2]': 'height',
+        'populate[blocks][populate]': '*',
+      },
     );
 
     final res = await get(
@@ -282,6 +376,54 @@ class Api extends BaseConnect {
     );
 
     final data = unwrapData<List<dynamic>>(res);
+
+    // Optimization: Bulk fetch read status
+    final userId = box.read<String>('userId');
+    if (userId != null && userId.isNotEmpty && data.isNotEmpty) {
+      final ids =
+          data.map((e) => e['documentId']).where((e) => e != null).toList();
+      if (ids.isNotEmpty) {
+        final readQuery = <String, String>{
+          'filters[user][id][\$eq]': userId,
+          'populate[article][fields][0]': 'documentId',
+          'fields[0]': 'isRead',
+          'pagination[limit]': '${ids.length}',
+        };
+        for (var i = 0; i < ids.length; i++) {
+          readQuery['filters[article][documentId][\$in][$i]'] =
+              ids[i].toString();
+        }
+
+        try {
+          final readRes = await get('/api/article-reads', query: readQuery);
+          final readList = unwrapData<List<dynamic>>(readRes);
+          final readMap = <String, bool>{};
+          for (final r in readList) {
+            if (r is Map) {
+              final article = r['article'];
+              final isRead = r['isRead'] == true;
+              String? aId;
+              if (article is Map) aId = article['documentId'];
+              if (aId != null && isRead) {
+                readMap[aId] = true;
+              }
+            }
+          }
+
+          for (final d in data) {
+            if (d is Map) {
+              final id = d['documentId'];
+              if (readMap.containsKey(id)) {
+                d['isRead'] = true;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('UserDiscussions Read Status Error: $e');
+        }
+      }
+    }
+
     final hasNext = data.length >= ApiConfig.defaultPageSize;
 
     return PaginationModel(
@@ -730,6 +872,54 @@ class Api extends BaseConnect {
   Future<ReleaseModel?> getNewVersion(String login) async {
     // Disabled/Mocked
     return null;
+  }
+
+  Future<void> markAsRead(String articleId) async {
+    final userId = box.read<String>('userId');
+    if (userId == null || userId.isEmpty) return;
+
+    // Check if exists
+    final checkRes = await get(
+      '/api/article-reads',
+      query: {
+        'filters[user][id][\$eq]': userId,
+        'filters[article][documentId][\$eq]': articleId,
+        'fields[0]': 'isRead',
+        'fields[1]': 'documentId',
+      },
+    );
+
+    try {
+      final list = unwrapData<List<dynamic>>(checkRes);
+      if (list.isNotEmpty) {
+        final item = list.first as Map;
+        final isRead = item['isRead'] == true;
+        final docId = item['documentId'] as String?;
+        if (!isRead && docId != null) {
+          // Update
+          await put(
+            '/api/article-reads/$docId',
+            {
+              'data': {'isRead': true}
+            },
+          );
+        }
+      } else {
+        // Create
+        await post(
+          '/api/article-reads',
+          {
+            'data': {
+              'user': _coerceId(userId),
+              'article': articleId,
+              'isRead': true,
+            }
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('MarkAsRead Error: $e');
+    }
   }
 
   Future<String?> uploadAvatar({

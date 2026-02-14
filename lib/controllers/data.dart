@@ -184,6 +184,13 @@ class Controller extends GetxController {
     pref.remove('root_token');
     isLogin(pref.getBool('isLogin') ?? false);
     ever(isLogin, (v) => pref.setBool('isLogin', v));
+    ever(user, (u) {
+      if (u?.userId != null) {
+        box.write('userId', u!.userId);
+      } else {
+        box.remove('userId');
+      }
+    });
     logger.i(isLogin());
     accelerator(pref.getString('accelerator') ?? '');
     ever(accelerator, (v) => pref.setString('accelerator', v));

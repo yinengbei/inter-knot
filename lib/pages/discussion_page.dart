@@ -52,6 +52,12 @@ class _DiscussionPageState extends State<DiscussionPage> {
     widget.discussion.comments.clear();
     _isInitialLoading = true;
 
+    // Mark as read
+    if (!widget.discussion.isRead) {
+      widget.discussion.isRead = true;
+      Get.find<Api>().markAsRead(widget.discussion.id);
+    }
+
     scrollController.addListener(() {
       if (_isLoadingMore) return;
       final maxScroll = scrollController.position.maxScrollExtent;

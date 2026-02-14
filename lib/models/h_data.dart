@@ -7,6 +7,7 @@ class HDataModel {
   static final _zeroDate = DateTime.fromMillisecondsSinceEpoch(0);
   static final api = Get.find<Api>();
   static final discussionsCache = <String, Future<DiscussionModel?>>{};
+  static const int _maxCacheSize = 50;
 
   String id;
   DateTime updatedAt;
@@ -24,7 +25,19 @@ class HDataModel {
   }) : updatedAt = updatedAt ?? _zeroDate;
 
   Future<DiscussionModel?> get discussion {
-    return discussionsCache[id] ??= api.getDiscussion(id);
+    if (discussionsCache.containsKey(id)) {
+      // LRU: Move to end
+      final future = discussionsCache.remove(id)!;
+      discussionsCache[id] = future;
+      return future;
+    }
+
+    if (discussionsCache.length >= _maxCacheSize) {
+      final keyToRemove = discussionsCache.keys.first;
+      discussionsCache.remove(keyToRemove);
+    }
+
+    return discussionsCache[id] = api.getDiscussion(id);
   }
 
   factory HDataModel.fromJson(Map<String, dynamic> json) {
@@ -34,11 +47,24 @@ class HDataModel {
         json['number']?.toString() ??
         '';
 
-    return HDataModel(
+    final hData = HDataModel(
       id: docId,
       updatedAt: (json['updatedAt'] as String?).use((v) => DateTime.parse(v)),
       isPinned: false,
     );
+
+    // Optimization: If json contains title, it might be a full object.
+    // Try to parse it and seed the cache to avoid N+1 requests.
+    if (json['title'] != null) {
+      try {
+        final discussion = DiscussionModel.fromJson(json);
+        discussionsCache[docId] = Future.value(discussion);
+      } catch (e) {
+        // parsing failed, ignore
+      }
+    }
+
+    return hData;
   }
 
   factory HDataModel.fromPinnedJson(Map<String, dynamic> json) {

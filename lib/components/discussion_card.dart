@@ -166,7 +166,11 @@ class _DiscussionCardState extends State<DiscussionCard>
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   widget.discussion.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: widget.discussion.isRead
+                            ? Colors.grey
+                            : Colors.blue,
+                      ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
