@@ -460,6 +460,31 @@ class Api extends BaseConnect {
     return 0;
   }
 
+  Future<int> getCommentCount(String discussionId) async {
+    final res = await get(
+      '/api/comments',
+      query: {
+        'filters[article][documentId][\$eq]': discussionId,
+        'pagination[limit]': '1',
+        'fields[0]': 'documentId',
+      },
+    );
+
+    if (res.hasError) return 0;
+
+    final body = res.body;
+    if (body is Map<String, dynamic>) {
+      final meta = body['meta'];
+      if (meta is Map<String, dynamic>) {
+        final pagination = meta['pagination'];
+        if (pagination is Map<String, dynamic>) {
+          return pagination['total'] as int? ?? 0;
+        }
+      }
+    }
+    return 0;
+  }
+
   Future<PaginationModel<CommentModel>> getComments(
       String id, String endCur) async {
     final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;

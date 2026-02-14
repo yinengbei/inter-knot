@@ -15,11 +15,13 @@ class DiscussionGrid extends StatefulWidget {
     required this.list,
     required this.hasNextPage,
     this.fetchData,
+    this.controller,
   });
 
   final Set<HDataModel> list;
   final bool hasNextPage;
   final void Function()? fetchData;
+  final ScrollController? controller;
 
   @override
   State<DiscussionGrid> createState() => _DiscussionGridState();
@@ -27,7 +29,8 @@ class DiscussionGrid extends StatefulWidget {
 
 class _DiscussionGridState extends State<DiscussionGrid>
     with AutomaticKeepAliveClientMixin {
-  final scrollController = ScrollController();
+  late final ScrollController scrollController;
+  bool _isLocalController = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -35,11 +38,44 @@ class _DiscussionGridState extends State<DiscussionGrid>
   @override
   void initState() {
     super.initState();
+    if (widget.controller != null) {
+      scrollController = widget.controller!;
+    } else {
+      scrollController = ScrollController();
+      _isLocalController = true;
+    }
     scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscussionGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      if (oldWidget.controller == null) {
+        // old was local, dispose it
+        if (_isLocalController) {
+          scrollController.dispose();
+          _isLocalController = false;
+        }
+      } else {
+        // old was external, remove listener
+        oldWidget.controller!.removeListener(_onScroll);
+      }
+
+      if (widget.controller != null) {
+        scrollController = widget.controller!;
+        _isLocalController = false;
+      } else {
+        scrollController = ScrollController();
+        _isLocalController = true;
+      }
+      scrollController.addListener(_onScroll);
+    }
   }
 
   void _onScroll() {
     if (!widget.hasNextPage) return;
+    if (!scrollController.hasClients) return;
     final maxScroll = scrollController.position.maxScrollExtent;
     final currentScroll = scrollController.position.pixels;
     if (maxScroll - currentScroll <= 100) {
@@ -50,7 +86,9 @@ class _DiscussionGridState extends State<DiscussionGrid>
   @override
   void dispose() {
     scrollController.removeListener(_onScroll);
-    scrollController.dispose();
+    if (_isLocalController) {
+      scrollController.dispose();
+    }
     super.dispose();
   }
 

@@ -37,6 +37,7 @@ class _SearchPageState extends State<SearchPage>
   @override
   void dispose() {
     keyboardSubscription.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -44,6 +45,8 @@ class _SearchPageState extends State<SearchPage>
     c.searchData,
     const Duration(milliseconds: 500),
   );
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -104,26 +107,97 @@ class _SearchPageState extends State<SearchPage>
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: isCompact
-                  ? RefreshIndicator(
-                      onRefresh: () async {
-                        await c.refreshSearchData();
-                      },
-                      child: Obx(() {
-                        return DiscussionGrid(
-                          list: c.searchResult(),
-                          hasNextPage: c.searchHasNextPage(),
-                          fetchData: fetchData,
-                        );
-                      }),
-                    )
-                  : Obx(() {
-                      return DiscussionGrid(
-                        list: c.searchResult(),
-                        hasNextPage: c.searchHasNextPage(),
-                        fetchData: fetchData,
+              child: Stack(
+                children: [
+                  isCompact
+                      ? RefreshIndicator(
+                          onRefresh: () async {
+                            await c.refreshSearchData();
+                          },
+                          child: Obx(() {
+                            return DiscussionGrid(
+                              list: c.searchResult(),
+                              hasNextPage: c.searchHasNextPage(),
+                              fetchData: fetchData,
+                              controller: _scrollController,
+                            );
+                          }),
+                        )
+                      : Obx(() {
+                          return DiscussionGrid(
+                            list: c.searchResult(),
+                            hasNextPage: c.searchHasNextPage(),
+                            fetchData: fetchData,
+                            controller: _scrollController,
+                          );
+                        }),
+                  Positioned(
+                    top: 16,
+                    left: 0,
+                    right: 0,
+                    child: Obx(() {
+                      final count = c.newPostCount.value;
+                      final hasChange = c.hasContentChange.value;
+
+                      if (count == 0 && !hasChange)
+                        return const SizedBox.shrink();
+
+                      String message = '帖子列表有更新';
+                      if (count > 0) {
+                        message = '有 $count 个新帖子';
+                      }
+
+                      return Center(
+                        child: Material(
+                          color: const Color(0xffD7FF00),
+                          borderRadius: BorderRadius.circular(20),
+                          elevation: 4,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () async {
+                              await c.showNewPosts();
+                              // Ensure layout is built before scrolling
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (_scrollController.hasClients) {
+                                  _scrollController.animateTo(
+                                    0,
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.easeOutQuart,
+                                  );
+                                }
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.arrow_upward,
+                                    size: 16,
+                                    color: Colors.black,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    message,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       );
                     }),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

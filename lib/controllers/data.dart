@@ -31,6 +31,9 @@ class Controller extends GetxController {
   String? searchEndCur;
   final searchHasNextPage = true.obs;
   final isSearching = false.obs;
+  final newPostCount = 0.obs;
+  final hasContentChange = false.obs;
+  Timer? _newPostCheckTimer;
 
   String rootToken = '';
 
@@ -174,6 +177,12 @@ class Controller extends GetxController {
   final accelerator = ''.obs;
 
   @override
+  void onClose() {
+    _newPostCheckTimer?.cancel();
+    super.onClose();
+  }
+
+  @override
   Future<void> onInit() async {
     super.onInit();
     pref = await SharedPreferencesWithCache.create(
@@ -290,6 +299,96 @@ class Controller extends GetxController {
     // Reports and Version
     // api.getAllReports...
     // api.getNewVersion...
+
+    _startNewPostCheck();
+  }
+
+  void _startNewPostCheck() {
+    _newPostCheckTimer?.cancel();
+    _newPostCheckTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      _checkNewPosts();
+    });
+  }
+
+  Future<void> _checkNewPosts() async {
+    if (searchQuery.isNotEmpty) return;
+    // Don't check if we are currently searching/refreshing
+    if (isSearching.value) return;
+
+    try {
+      final pagination = await api.search('', '');
+
+      // Check again if we started searching while waiting for api
+      if (isSearching.value) return;
+
+      if (pagination.nodes.isEmpty) return;
+
+      // Remote non-pinned posts
+      final remoteList = pagination.nodes.where((e) => !e.isPinned).toList();
+
+      // Local non-pinned posts
+      final localList = searchResult.where((e) => !e.isPinned).toList();
+
+      if (localList.isEmpty) {
+        // Only trigger update if we expect local list to be populated but it is empty
+        // However, if searchResult was cleared by refreshSearchData, we should skip
+        if (isSearching.value) return;
+
+        // If we really have no local data (e.g. initial load failed?), then maybe we should sync
+        // But usually this means a refresh is pending or happened.
+        // Let's be safe: if local is empty, don't report "20 new posts" unless we are sure.
+        return;
+      }
+
+      final localHead = localList.first;
+
+      // Check where localHead is in remoteList
+      final index = remoteList.indexWhere((e) => e.id == localHead.id);
+
+      if (index != -1) {
+        // Found localHead in remoteList
+        // The items before it are new
+        if (index > 0) {
+          newPostCount.value = index;
+        } else {
+          // No new posts
+          newPostCount.value = 0;
+          hasContentChange.value = false;
+        }
+      } else {
+        // localHead not found in remoteList
+        // Possibilities:
+        // 1. localHead was deleted
+        // 2. localHead is too old (pushed out of first page)
+        // 3. entire first page is new
+
+        // Check if remoteList has items older than localHead
+        // Assuming id is roughly chronological or updatedAt
+        final hasOlder =
+            remoteList.any((e) => e.updatedAt.isBefore(localHead.updatedAt));
+
+        if (hasOlder) {
+          // Remote has items older than localHead, but localHead is missing
+          // -> localHead was likely deleted
+          hasContentChange.value = true;
+          // We can't accurately count new posts, but we know there's a change
+          newPostCount.value = 0;
+        } else {
+          // All remote items are newer than localHead
+          // -> Lots of new posts
+          newPostCount.value = remoteList.length; // At least this many
+        }
+      }
+    } catch (e) {
+      // Silent error
+    }
+  }
+
+  Future<void> showNewPosts() async {
+    newPostCount.value = 0;
+    hasContentChange.value = false;
+    // Scroll to top is handled in UI usually, but refresh data here
+    await refreshSearchData();
   }
 
   Future<void> refreshFavorites() async {
@@ -387,6 +486,8 @@ class Controller extends GetxController {
   final searchController = SearchController();
 
   late final refreshSearchData = throttle(() async {
+    // 重置定时器，避免刷新时刚好触发轮询
+    _startNewPostCheck();
     isSearching(true);
     try {
       logger.i('Refreshing search data...');
@@ -395,6 +496,8 @@ class Controller extends GetxController {
       searchCache.clear();
       HDataModel.discussionsCache.clear(); // 清空详情缓存
       searchResult.clear();
+      newPostCount.value = 0;
+      hasContentChange.value = false;
       await searchData();
       logger.i('Refreshed. Result count: ${searchResult.length}');
     } finally {

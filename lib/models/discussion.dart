@@ -201,7 +201,12 @@ class DiscussionModel {
       if (comments.isEmpty) {
         comments = [pagination];
       } else {
-        comments.last.nodes.addAll(pagination.nodes);
+        // Filter out duplicates based on id
+        final existingIds = comments.last.nodes.map((e) => e.id).toSet();
+        final newNodes =
+            pagination.nodes.where((e) => !existingIds.contains(e.id)).toList();
+
+        comments.last.nodes.addAll(newNodes);
         comments.last.hasNextPage = pagination.hasNextPage;
         comments.last.endCursor = pagination.endCursor;
       }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +43,9 @@ class _DiscussionPageState extends State<DiscussionPage> {
   final c = Get.find<Controller>();
   bool _isLoadingMore = false;
   bool _isInitialLoading = false;
+  Timer? _newCommentCheckTimer;
+  int _newCommentCount = 0;
+  int _serverCommentCount = 0;
 
   @override
   void initState() {
@@ -51,6 +56,7 @@ class _DiscussionPageState extends State<DiscussionPage> {
 
     widget.discussion.comments.clear();
     _isInitialLoading = true;
+    _startNewCommentCheck();
 
     // Mark as read
     if (!widget.discussion.isRead) {
@@ -117,8 +123,41 @@ class _DiscussionPageState extends State<DiscussionPage> {
     });
   }
 
+  void _startNewCommentCheck() {
+    _newCommentCheckTimer?.cancel();
+    _newCommentCheckTimer =
+        Timer.periodic(const Duration(seconds: 15), (timer) {
+      _checkNewComments();
+    });
+  }
+
+  Future<void> _checkNewComments() async {
+    try {
+      final count = await Get.find<Api>().getCommentCount(widget.discussion.id);
+      if (count > widget.discussion.commentsCount) {
+        if (mounted) {
+          setState(() {
+            _serverCommentCount = count;
+            _newCommentCount = count - widget.discussion.commentsCount;
+          });
+        }
+      } else {
+        // If server count is less or equal (e.g. deletion), sync it?
+        // Or just ignore.
+        if (_newCommentCount > 0 && mounted) {
+          setState(() {
+            _newCommentCount = 0;
+          });
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   @override
   void dispose() {
+    _newCommentCheckTimer?.cancel();
     scrollController.dispose();
     leftScrollController.dispose();
     super.dispose();
@@ -137,6 +176,66 @@ class _DiscussionPageState extends State<DiscussionPage> {
         }
       });
     }
+  }
+
+  Widget _buildNewCommentNotification() {
+    if (_newCommentCount <= 0) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: 24,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Material(
+          color: const Color(0xffD7FF00),
+          borderRadius: BorderRadius.circular(20),
+          elevation: 4,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () async {
+              widget.discussion.commentsCount = _serverCommentCount;
+              setState(() {
+                _newCommentCount = 0;
+              });
+
+              // Always try to fetch if we have new comments
+              if (widget.discussion.comments.isNotEmpty) {
+                // Mark hasNextPage true to force fetch even if we thought we were at end
+                widget.discussion.comments.last.hasNextPage = true;
+              }
+
+              await widget.discussion.fetchComments();
+              if (mounted) setState(() {});
+              _scrollToBottom();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.arrow_downward,
+                    size: 16,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '有 $_newCommentCount 条新评论',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -295,41 +394,51 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                 child: LayoutBuilder(
                                   builder: (context, con) {
                                     if (con.maxWidth < 600) {
-                                      return ListView(
-                                        controller: scrollController,
+                                      return Stack(
                                         children: [
-                                          Container(
-                                            constraints: const BoxConstraints(
-                                                maxHeight: 500),
-                                            width: double.infinity,
-                                            child: Cover(
-                                                discussion: widget.discussion),
-                                          ),
-                                          DiscussionDetailBox(
-                                            discussion: widget.discussion,
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16),
-                                            child: Column(
-                                              children: [
-                                                DiscussionActionButtons(
-                                                  discussion: widget.discussion,
-                                                  hData: widget.hData,
-                                                  onCommentAdded:
-                                                      _scrollToBottom,
-                                                  onEditSuccess: () =>
-                                                      setState(() {}),
-                                                ),
-                                                const SizedBox(height: 16),
-                                                const Divider(),
-                                                Comment(
+                                          ListView(
+                                            controller: scrollController,
+                                            children: [
+                                              Container(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                        maxHeight: 500),
+                                                width: double.infinity,
+                                                child: Cover(
                                                     discussion:
-                                                        widget.discussion,
-                                                    loading: _isInitialLoading),
-                                              ],
-                                            ),
+                                                        widget.discussion),
+                                              ),
+                                              DiscussionDetailBox(
+                                                discussion: widget.discussion,
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16),
+                                                child: Column(
+                                                  children: [
+                                                    DiscussionActionButtons(
+                                                      discussion:
+                                                          widget.discussion,
+                                                      hData: widget.hData,
+                                                      onCommentAdded:
+                                                          _scrollToBottom,
+                                                      onEditSuccess: () =>
+                                                          setState(() {}),
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    const Divider(),
+                                                    Comment(
+                                                        discussion:
+                                                            widget.discussion,
+                                                        loading:
+                                                            _isInitialLoading),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
+                                          _buildNewCommentNotification(),
                                         ],
                                       );
                                     }
@@ -454,31 +563,38 @@ class _DiscussionPageState extends State<DiscussionPage> {
                                               child: Column(
                                                 children: [
                                                   Expanded(
-                                                    child: AdaptiveSmoothScroll(
-                                                      controller:
-                                                          scrollController,
-                                                      scrollSpeed: 0.5,
-                                                      builder: (context,
-                                                              physics) =>
-                                                          SingleChildScrollView(
-                                                        controller:
-                                                            scrollController,
-                                                        physics: physics,
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(16.0),
-                                                          child: Column(
-                                                            children: [
-                                                              Comment(
-                                                                  discussion: widget
-                                                                      .discussion,
-                                                                  loading:
-                                                                      _isInitialLoading),
-                                                            ],
+                                                    child: Stack(
+                                                      children: [
+                                                        AdaptiveSmoothScroll(
+                                                          controller:
+                                                              scrollController,
+                                                          scrollSpeed: 0.5,
+                                                          builder: (context,
+                                                                  physics) =>
+                                                              SingleChildScrollView(
+                                                            controller:
+                                                                scrollController,
+                                                            physics: physics,
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(
+                                                                      16.0),
+                                                              child: Column(
+                                                                children: [
+                                                                  Comment(
+                                                                      discussion:
+                                                                          widget
+                                                                              .discussion,
+                                                                      loading:
+                                                                          _isInitialLoading),
+                                                                ],
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
+                                                        _buildNewCommentNotification(),
+                                                      ],
                                                     ),
                                                   ),
                                                   Container(
