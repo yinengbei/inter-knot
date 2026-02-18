@@ -7,6 +7,7 @@ import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/parse_html.dart';
 import 'package:inter_knot/helpers/use.dart';
 import 'package:inter_knot/models/author.dart';
+import 'package:inter_knot/models/category.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -111,6 +112,16 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
           name: 'Unknown',
         );
 
+  // Parse category (manyToOne relation)
+  CategoryModel? category;
+  final categoryData = json['category'];
+  if (categoryData is Map<String, dynamic>) {
+    category = CategoryModel.fromJson(categoryData);
+  } else if (categoryData is Map<String, dynamic> && categoryData['data'] is Map<String, dynamic>) {
+    final data = categoryData['data'] as Map<String, dynamic>;
+    category = CategoryModel.fromJson(data);
+  }
+
   return DiscussionModel(
     title: json['title'] is String
         ? json['title'] as String
@@ -145,6 +156,7 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
             ),
           ]
         : [],
+    category: category,
   );
 }
 
@@ -164,6 +176,7 @@ class DiscussionModel {
   int commentsCount;
   AuthorModel author;
   List<PaginationModel<CommentModel>> comments;
+  CategoryModel? category;
   String get bodyText {
     // 移除 Markdown 图片 ![alt](url)
     var text =
@@ -234,6 +247,7 @@ class DiscussionModel {
     this.isRead = false,
     this.isPinned = false,
     required this.comments,
+    this.category,
   });
 
   factory DiscussionModel.fromJson(Map<String, dynamic> json) =>
