@@ -3,8 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/hover_3d.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
+import 'package:inter_knot/models/category.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
+
+/// Get color for a category based on its name
+Color getCategoryColor(CategoryModel? category) {
+  if (category == null) return Colors.grey;
+
+  final name = category.name.toLowerCase();
+
+  // Gaming categories
+  if (name.contains('原神') || name.contains('genshin')) {
+    return const Color(0xFF7B68EE); // MediumSlateBlue
+  } else if (name.contains('绝区零') || name.contains('zzz')) {
+    return const Color(0xFFFF6B6B); // Red coral
+  } else if (name.contains('崩坏') || name.contains('honkai')) {
+    return const Color(0xFFFF69B4); // HotPink
+  } else if (name.contains('星穹铁道') || name.contains('starrail')) {
+    return const Color(0xFF4169E1); // RoyalBlue
+  }
+
+  // Tech categories
+  if (name.contains('技术') || name.contains('tech')) {
+    return const Color(0xFF20B2AA); // LightSeaGreen
+  } else if (name.contains('开发') || name.contains('dev')) {
+    return const Color(0xFF32CD32); // LimeGreen
+  }
+
+  // General categories
+  if (name.contains('讨论') || name.contains('discussion')) {
+    return const Color(0xFFFFA500); // Orange
+  } else if (name.contains('新闻') || name.contains('news')) {
+    return const Color(0xFF1E90FF); // DodgerBlue
+  } else if (name.contains('攻略') || name.contains('guide')) {
+    return const Color(0xFF9370DB); // MediumPurple
+  }
+
+  // Default colors based on name hash for variety
+  final hash = name.hashCode;
+  final colors = [
+    const Color(0xFFE74C3C), // Red
+    const Color(0xFF3498DB), // Blue
+    const Color(0xFF2ECC71), // Green
+    const Color(0xFFF39C12), // Yellow
+    const Color(0xFF9B59B6), // Purple
+    const Color(0xFF1ABC9C), // Teal
+    const Color(0xFFE91E63), // Pink
+    const Color(0xFF00BCD4), // Cyan
+  ];
+  return colors[hash.abs() % colors.length];
+}
 
 class DiscussionCard extends StatefulWidget {
   const DiscussionCard({
@@ -57,7 +106,7 @@ class _DiscussionCardState extends State<DiscussionCard>
     super.build(context);
     final isCompact = MediaQuery.of(context).size.width < 640;
 
-    final child = MouseRegion(
+    final cardContent = MouseRegion(
       onEnter: (_) {
         setState(() => _isHovering = true);
         _breathingController.reset();
@@ -94,7 +143,9 @@ class _DiscussionCardState extends State<DiscussionCard>
                       ? (_breathingAnimation.value ?? const Color(0xfffbfe00))
                       : (widget.discussion.isPinned
                           ? Colors.blue
-                          : Colors.black),
+                          : (widget.discussion.category != null
+                              ? getCategoryColor(widget.discussion.category)
+                              : Colors.black)),
                 ),
               ),
               child: InkWell(
@@ -116,15 +167,6 @@ class _DiscussionCardState extends State<DiscussionCard>
                     discussion: widget.discussion,
                     isHovering: _isHovering,
                   ),
-                  if (widget.hData.isPin)
-                    const Positioned(
-                      top: 8,
-                      right: 12,
-                      child: Text(
-                        '置顶',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
                   if (widget.discussion.isPinned)
                     Positioned(
                       top: 0,
@@ -145,6 +187,31 @@ class _DiscussionCardState extends State<DiscussionCard>
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ),
+                    ),
+                  if (widget.discussion.category != null)
+                    Positioned(
+                      top: 4,
+                      left: widget.discussion.isPinned ? 48 : 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: getCategoryColor(widget.discussion.category),
+                          borderRadius: const BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          widget.discussion.category!.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -225,8 +292,8 @@ class _DiscussionCardState extends State<DiscussionCard>
       ),
     );
 
-    if (isCompact) return child;
-    return Hover3D(child: child);
+    if (isCompact) return cardContent;
+    return Hover3D(child: cardContent);
   }
 
   @override

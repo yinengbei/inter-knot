@@ -397,6 +397,9 @@ class Api extends BaseConnect {
         'populate[cover][fields][1]': 'width',
         'populate[cover][fields][2]': 'height',
         'populate[blocks][populate]': '*',
+        'populate[category][fields][0]': 'documentId',
+        'populate[category][fields][1]': 'name',
+        'populate[category][fields][2]': 'slug',
       },
     );
 
@@ -474,6 +477,9 @@ class Api extends BaseConnect {
         'populate[cover][fields][1]': 'width',
         'populate[cover][fields][2]': 'height',
         'populate[blocks][populate]': '*',
+        'populate[category][fields][0]': 'documentId',
+        'populate[category][fields][1]': 'name',
+        'populate[category][fields][2]': 'slug',
       },
     );
 
@@ -556,6 +562,9 @@ class Api extends BaseConnect {
         'populate[cover][fields][1]': 'width',
         'populate[cover][fields][2]': 'height',
         'populate[blocks][populate]': '*',
+        'populate[category][fields][0]': 'documentId',
+        'populate[category][fields][1]': 'name',
+        'populate[category][fields][2]': 'slug',
       },
     );
 
@@ -1032,6 +1041,9 @@ class Api extends BaseConnect {
         'populate[cover][fields][1]': 'width',
         'populate[cover][fields][2]': 'height',
         'populate[blocks][populate]': '*',
+        'populate[category][fields][0]': 'documentId',
+        'populate[category][fields][1]': 'name',
+        'populate[category][fields][2]': 'slug',
       },
     );
 
