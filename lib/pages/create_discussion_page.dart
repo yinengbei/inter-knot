@@ -18,6 +18,7 @@ import 'package:inter_knot/helpers/num2dur.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 
+import 'package:inter_knot/models/category.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -52,6 +53,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   bool isLoading = false;
   int _selectedIndex = 0;
+
+  // Categories State
+  final categories = <CategoryModel>[].obs;
+  final selectedCategory = Rx<CategoryModel?>(null);
+  bool isLoadingCategories = false;
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
@@ -319,6 +325,39 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       for (final cover in widget.discussion!.coverImages) {
         _uploadedImages.add((id: '', url: cover.url));
       }
+
+      // Load existing category for edit mode
+      if (widget.discussion!.category != null) {
+        selectedCategory.value = widget.discussion!.category;
+      }
+    }
+
+    // Fetch categories only if logged in
+    if (c.isLogin.value) {
+      _fetchCategories();
+    }
+  }
+
+  Future<void> _fetchCategories() async {
+    debugPrint('[_fetchCategories] Starting to fetch categories...');
+    setState(() {
+      isLoadingCategories = true;
+    });
+    try {
+      final result = await api.getCategories();
+      debugPrint('[_fetchCategories] Fetched ${result.length} categories');
+      categories.assignAll(result);
+      for (final cat in result) {
+        debugPrint('[_fetchCategories] Category: ${cat.name}, documentId: ${cat.documentId}, numericId: ${cat.numericId}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[_fetchCategories] Failed to fetch categories: $e');
+      debugPrint('[_fetchCategories] Stack trace: $stackTrace');
+      Get.rawSnackbar(message: '获取分类失败: $e');
+    } finally {
+      setState(() {
+        isLoadingCategories = false;
+      });
     }
   }
 
@@ -396,6 +435,60 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     return false;
   }
 
+  Widget _buildCategorySelector() {
+    if (isLoadingCategories) {
+      return Container(
+        height: 40,
+        alignment: Alignment.centerLeft,
+        child: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Obx(() {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categories.map((category) {
+            final isSelected = selectedCategory.value?.documentId == category.documentId;
+            return FilterChip(
+              label: Text(category.name),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  selectedCategory.value = category;
+                } else {
+                  selectedCategory.value = null;
+                }
+              },
+              selectedColor: const Color(0xffFBC02D).withOpacity(0.3),
+              checkmarkColor: const Color(0xffFBC02D),
+              labelStyle: TextStyle(
+                color: isSelected ? const Color(0xffFBC02D) : Colors.grey[400],
+                fontSize: 12,
+              ),
+              backgroundColor: const Color(0xff1E1E1E),
+              side: BorderSide(
+                color: isSelected
+                    ? const Color(0xffFBC02D)
+                    : const Color(0xff313132),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    });
+  }
+
   Future<void> _submit() async {
     final title = titleController.text.trim();
     final delta = _quillController.document.toDelta();
@@ -440,38 +533,25 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         );
       } else {
         // Create Mode
-        var slug = _slugify(title);
+        // Always use unique slug to avoid conflicts
+        final slug = _slugifyUnique(title);
         final user = c.user.value;
         final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
         if (authorId == null || authorId.isEmpty) {
           throw Exception('无法关联作者，请重新登录后再试');
         }
 
+        final categoryId = selectedCategory.value?.numericId;
+        debugPrint('[CreateDiscussion] Selected category: ${selectedCategory.value?.name}, numericId: $categoryId');
+        
         res = await api.createArticle(
           title: title,
           text: markdownText,
           slug: slug,
           coverId: finalCoverId,
           authorId: authorId,
+          categoryNumericId: categoryId,
         );
-
-        // Check for error in REST format (error object) or GraphQL format (errors list)
-        final resBody = res.body;
-        if (resBody != null) {
-          final error = resBody['error'];
-          final errors = resBody['errors'];
-          if ((error != null || errors != null) &&
-              _isSlugUniqueError(resBody)) {
-            slug = _slugifyUnique(title);
-            res = await api.createArticle(
-              title: title,
-              text: markdownText,
-              slug: slug,
-              coverId: finalCoverId,
-              authorId: authorId,
-            );
-          }
-        }
       }
 
       if (res.hasError) {
@@ -563,6 +643,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                 border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 8),
+            // Categories Selection
+            _buildCategorySelector(),
             const SizedBox(height: 16),
             quill.QuillSimpleToolbar(
               controller: _quillController,

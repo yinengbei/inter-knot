@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -6,6 +7,7 @@ import 'package:inter_knot/api/api_exception.dart';
 import 'package:inter_knot/constants/api_config.dart';
 import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/models/author.dart';
+import 'package:inter_knot/models/category.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
@@ -497,6 +499,25 @@ class Api extends BaseConnect {
     return compute(_parseDiscussionSync, data);
   }
 
+  Future<List<CategoryModel>> getCategories() async {
+    debugPrint('[getCategories] Sending request to /api/categories');
+    final res = await get('/api/categories', query: {
+      'sort': 'name:asc',
+    });
+    debugPrint('[getCategories] Response status: ${res.statusCode}');
+    debugPrint('[getCategories] Response body: ${res.bodyString}');
+
+    if (res.hasError) {
+      throw ApiException(
+        'Failed to fetch categories: ${res.statusText}',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final data = unwrapData<List<dynamic>>(res);
+    return data.map((json) => CategoryModel.fromJson(json)).toList();
+  }
+
   Future<PaginationModel<HDataModel>> search(
       String query, String endCur) async {
     final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
@@ -798,6 +819,7 @@ class Api extends BaseConnect {
     required String slug,
     dynamic coverId, // String or List<String>
     String? authorId,
+    int? categoryNumericId, // Single category numeric ID to associate (manyToOne)
   }) {
     final Map<String, dynamic> data = {
       'title': title,
@@ -818,6 +840,16 @@ class Api extends BaseConnect {
     if (authorId != null && authorId.isNotEmpty) {
       data['author'] = _coerceId(authorId);
     }
+
+    // Associate with category (manyToOne relation)
+    if (categoryNumericId != null) {
+      data['category'] = {
+        'connect': [{'id': categoryNumericId}],
+      };
+      debugPrint('[createArticle] Adding category with numericId: $categoryNumericId');
+    }
+
+    debugPrint('[createArticle] Request body: ${jsonEncode({'data': data})}');
 
     return post(
       '/api/articles',
