@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 
@@ -75,6 +76,32 @@ class CategoryModel {
 
   @override
   String toString() => 'CategoryModel(documentId: $documentId, name: $name, slug: $slug)';
+
+  /// 获取类别颜色 - 通过编码从名称或 documentId 生成
+  /// 这样任何新类别都能自动生成唯一的颜色
+  Color get color {
+    // 使用 documentId 或 name 作为种子生成颜色
+    final seed = documentId.isNotEmpty ? documentId : name;
+
+    // 计算哈希值
+    int hash = 0;
+    for (int i = 0; i < seed.length; i++) {
+      hash = ((hash << 5) - hash) + seed.codeUnitAt(i);
+      hash = hash & 0xFFFFFFFF; // 限制为 32 位整数
+    }
+
+    // 使用 HSL 颜色模型生成鲜艳的颜色
+    // 色相：0-360 度，由哈希值决定
+    final hue = (hash.abs() % 360).toDouble();
+
+    // 饱和度：60-80%，确保颜色鲜艳但不刺眼
+    final saturation = 0.6 + (hash.abs() % 20) / 100;
+
+    // 亮度：45-55%，确保颜色适中（不太暗也不太亮）
+    final lightness = 0.45 + (hash.abs() % 10) / 100;
+
+    return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
+  }
 }
 
 class CategoryController extends GetxController {

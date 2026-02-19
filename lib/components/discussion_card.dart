@@ -4,6 +4,7 @@ import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/hover_3d.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 import 'package:inter_knot/models/discussion.dart';
+import 'package:inter_knot/models/category.dart';
 import 'package:inter_knot/models/h_data.dart';
 
 class NetworkImageBox extends StatelessWidget {
@@ -120,6 +121,24 @@ class _DiscussionCardState extends State<DiscussionCard>
     super.dispose();
   }
 
+  /// 获取卡片边框颜色
+  Color _getBorderColor() {
+    // 悬停时优先显示黄色呼吸动画
+    if (_isHovering) {
+      return _breathingAnimation.value ?? const Color(0xfffbfe00);
+    }
+    // 置顶时显示蓝色
+    if (widget.discussion.isPinned) {
+      return Colors.blue;
+    }
+    // 有类别时显示类别颜色
+    if (widget.discussion.category != null) {
+      return widget.discussion.category!.color;
+    }
+    // 默认黑色
+    return Colors.black;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -158,11 +177,7 @@ class _DiscussionCardState extends State<DiscussionCard>
                 ),
                 border: Border.all(
                   width: 4,
-                  color: _isHovering
-                      ? (_breathingAnimation.value ?? const Color(0xfffbfe00))
-                      : (widget.discussion.isPinned
-                          ? Colors.blue
-                          : Colors.black),
+                  color: _getBorderColor(),
                 ),
               ),
               child: InkWell(
@@ -209,6 +224,30 @@ class _DiscussionCardState extends State<DiscussionCard>
                         child: const Text(
                           '置顶',
                           style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // 类别标签
+                  if (widget.discussion.category != null)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: widget.discussion.category!.color,
+                          borderRadius: const BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          widget.discussion.category!.name,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
