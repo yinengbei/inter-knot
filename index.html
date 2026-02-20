@@ -27,11 +27,6 @@
     <meta name="apple-mobile-web-app-title" content="绳网" />
     <link rel="apple-touch-icon" href="icons/Icon-192.png" />
 
-    <!-- Prevent caching -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="favicon.png" />
 
@@ -77,21 +72,6 @@
     <div id="flutter-loading-screen">
       <img src="images/loading.gif" alt="加载中" fetchpriority="high" />
     </div>
-    <script>
-      // Force clear Service Worker cache to ensure new version is loaded
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
-
-      // Load flutter_bootstrap.js with a timestamp to prevent caching
-      var script = document.createElement('script');
-      script.src = "flutter_bootstrap.js?v=" + new Date().getTime();
-      script.async = true;
-      document.body.appendChild(script);
-    </script>
+    <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>
