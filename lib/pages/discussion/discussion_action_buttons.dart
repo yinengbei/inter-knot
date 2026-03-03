@@ -181,64 +181,11 @@ class DiscussionActionButtonsState extends State<DiscussionActionButtons>
   }
 
   Future<void> _handleDelete() async {
-    final confirmed = await showZZZDialog<bool>(
+    final confirmed = await showDeleteConfirmDialog(
       context: context,
-      pageBuilder: (context) {
-        return Center(
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: 300,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xff1E1E1E),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xff313132),
-                  width: 4,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '确认删除',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '确定要删除这个帖子吗？此操作不可恢复。',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('取消'),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text(
-                          '删除',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      title: '确认删除',
+      message: '确定要删除这个帖子吗？此操作不可恢复。',
+      width: 300,
     );
 
     if (confirmed == true) {

@@ -88,3 +88,73 @@ Future<T?> showZZZDialog<T>({
     },
   );
 }
+
+Future<bool?> showDeleteConfirmDialog({
+  required BuildContext context,
+  required String title,
+  required String message,
+  double width = 320,
+  String confirmText = '删除',
+  String cancelText = '取消',
+  Color confirmTextColor = Colors.red,
+}) {
+  return showZZZDialog<bool>(
+    context: context,
+    pageBuilder: (context) {
+      return Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xff1E1E1E),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xff313132),
+                width: 4,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text(cancelText),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: Text(
+                        confirmText,
+                        style: TextStyle(color: confirmTextColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
