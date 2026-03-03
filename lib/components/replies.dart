@@ -17,11 +17,15 @@ class Replies extends StatefulWidget {
     required this.comment,
     required this.discussion,
     required this.onReply,
+    this.onDelete,
+    this.removingCommentIds = const <String>{},
   });
 
   final CommentModel comment;
   final DiscussionModel discussion;
   final void Function(String id, String? userName, {bool addPrefix}) onReply;
+  final Future<void> Function(CommentModel comment)? onDelete;
+  final Set<String> removingCommentIds;
 
   @override
   State<Replies> createState() => _RepliesState();
@@ -64,144 +68,192 @@ class _RepliesState extends State<Replies> {
       children: [
         const SizedBox(height: 10),
         for (final reply in widget.comment.replies)
-          isMobile
-              ? _buildMobileReplyItem(reply, c)
-              : ListTile(
-                  titleAlignment: ListTileTitleAlignment.top,
-                  contentPadding: EdgeInsets.zero,
-                  horizontalTitleGap: 16,
-                  minVerticalPadding: 0,
-                  leading: ClipOval(
-                    child: InkWell(
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      borderRadius: BorderRadius.circular(50),
-                      onTap: () => launchUrlString(reply.url),
-                      child: Avatar(reply.author.avatar),
+          _buildReplyRemovalAnimation(
+            reply,
+            isMobile
+                ? _buildMobileReplyItem(reply, c)
+                : ListTile(
+                    titleAlignment: ListTileTitleAlignment.top,
+                    contentPadding: EdgeInsets.zero,
+                    horizontalTitleGap: 16,
+                    minVerticalPadding: 0,
+                    leading: ClipOval(
+                      child: InkWell(
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        borderRadius: BorderRadius.circular(50),
+                        onTap: () => launchUrlString(reply.url),
+                        child: Avatar(reply.author.avatar),
+                      ),
                     ),
-                  ),
-                  title: Row(
-                    children: [
-                      Flexible(
-                        child: InkWell(
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          onTap: () => launchUrlString(reply.url),
-                          child: Obx(() {
-                            final user = c.user.value;
-                            final currentAuthorId =
-                                c.authorId.value ?? user?.authorId;
-                            final isMe = currentAuthorId != null &&
-                                currentAuthorId == reply.author.authorId;
-                            final isOp = reply.author.login ==
-                                widget.discussion.author.login;
-                            final isLayerOwner = reply.author.login ==
-                                widget.comment.author.login;
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: InkWell(
+                            splashColor: Colors.transparent,
+                            highlightColor: Colors.transparent,
+                            onTap: () => launchUrlString(reply.url),
+                            child: Obx(() {
+                              final user = c.user.value;
+                              final currentAuthorId =
+                                  c.authorId.value ?? user?.authorId;
+                              final isMe = currentAuthorId != null &&
+                                  currentAuthorId == reply.author.authorId;
+                              final isOp = reply.author.login ==
+                                  widget.discussion.author.login;
+                              final isLayerOwner = reply.author.login ==
+                                  widget.comment.author.login;
 
-                            return Text(
-                              '${isOp ? '【楼主】 ' : (isLayerOwner ? '【层主】 ' : '')}${isMe ? (user?.name ?? reply.author.name) : reply.author.name}',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isMe ? const Color(0xFFFFBC2E) : null,
-                                fontWeight: isMe ? FontWeight.bold : null,
-                                fontSize: 13,
-                              ),
-                            );
-                          }),
+                              return Text(
+                                '${isOp ? '【楼主】 ' : (isLayerOwner ? '【层主】 ' : '')}${isMe ? (user?.name ?? reply.author.name) : reply.author.name}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isMe ? const Color(0xFFFFBC2E) : null,
+                                  fontWeight: isMe ? FontWeight.bold : null,
+                                  fontSize: 13,
+                                ),
+                              );
+                            }),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Lv.${reply.author.level ?? 1}',
-                        style: const TextStyle(
-                          color: Color(0xffD7FF00),
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.italic,
-                          fontSize: 12,
+                        const SizedBox(width: 8),
+                        Text(
+                          'Lv.${reply.author.level ?? 1}',
+                          style: const TextStyle(
+                            color: Color(0xffD7FF00),
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
+                        const SizedBox(width: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              if (reply.author.login == owner)
+                                const MyChip('绳网创始人'),
+                              if (collaborators.contains(reply.author.login))
+                                const MyChip('绳网协作者'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        SelectionArea(
+                          child: HtmlWidget(
+                            reply.bodyHTML,
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xffE0E0E0), // Light grey for replies
+                            ),
+                            onTapImage: (data) {
+                              if (data.sources.isEmpty) return;
+                              final url = data.sources.first.url;
+                              ImageViewer.show(context,
+                                  imageUrls: [url], heroTagPrefix: null);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
-                            if (reply.author.login == owner)
-                              const MyChip('绳网创始人'),
-                            if (collaborators.contains(reply.author.login))
-                              const MyChip('绳网协作者'),
+                            Text(
+                              DateFormat('yyyy-MM-dd HH:mm')
+                                  .format(reply.createdAt.toLocal()),
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.grey),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: () => widget.onReply(
+                                  widget.comment.id, reply.author.name,
+                                  addPrefix: true),
+                              style: ButtonStyle(
+                                padding: WidgetStateProperty.all(EdgeInsets.zero),
+                                minimumSize: WidgetStateProperty.all(Size.zero),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                overlayColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                  (Set<WidgetState> states) {
+                                    if (states.contains(WidgetState.hovered)) {
+                                      return const Color(0xffD7FF00)
+                                          .withValues(alpha: 0.1);
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                foregroundColor:
+                                    WidgetStateProperty.resolveWith<Color>(
+                                  (Set<WidgetState> states) {
+                                    if (states.contains(WidgetState.hovered)) {
+                                      return const Color(0xffD7FF00);
+                                    }
+                                    return Colors.grey;
+                                  },
+                                ),
+                              ),
+                              child: const Text('回复',
+                                  style: TextStyle(fontSize: 12)),
+                            ),
+                            if (widget.onDelete != null) ...[
+                              const SizedBox(width: 8),
+                              Obx(() {
+                                final user = c.user.value;
+                                final currentAuthorId =
+                                    c.authorId.value ?? user?.authorId;
+                                final isMe = currentAuthorId != null &&
+                                    currentAuthorId == reply.author.authorId;
+                                if (!isMe) return const SizedBox.shrink();
+
+                                final deleting =
+                                    widget.removingCommentIds.contains(reply.id);
+
+                                return TextButton(
+                                  onPressed: deleting
+                                      ? null
+                                      : () => widget.onDelete?.call(reply),
+                                  style: ButtonStyle(
+                                    padding:
+                                        WidgetStateProperty.all(EdgeInsets.zero),
+                                    minimumSize: WidgetStateProperty.all(Size.zero),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    overlayColor:
+                                        WidgetStateProperty.resolveWith<Color?>(
+                                      (Set<WidgetState> states) {
+                                        if (states
+                                            .contains(WidgetState.hovered)) {
+                                          return Colors.red
+                                              .withValues(alpha: 0.12);
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    foregroundColor: WidgetStateProperty.all(
+                                        Colors.redAccent),
+                                  ),
+                                  child: Text(
+                                    deleting ? '删除中...' : '删除',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                );
+                              }),
+                            ],
                           ],
                         ),
-                      ),
-                    ],
+                        const Divider(),
+                      ],
+                    ),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      SelectionArea(
-                        child: HtmlWidget(
-                          reply.bodyHTML,
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xffE0E0E0), // Light grey for replies
-                          ),
-                          onTapImage: (data) {
-                            if (data.sources.isEmpty) return;
-                            final url = data.sources.first.url;
-                            ImageViewer.show(context,
-                                imageUrls: [url], heroTagPrefix: null);
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            DateFormat('yyyy-MM-dd HH:mm')
-                                .format(reply.createdAt.toLocal()),
-                            style: const TextStyle(
-                                fontSize: 13, color: Colors.grey),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () => widget.onReply(
-                                widget.comment.id, reply.author.name,
-                                addPrefix: true),
-                            style: ButtonStyle(
-                              padding: WidgetStateProperty.all(EdgeInsets.zero),
-                              minimumSize: WidgetStateProperty.all(Size.zero),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                              overlayColor:
-                                  WidgetStateProperty.resolveWith<Color?>(
-                                (Set<WidgetState> states) {
-                                  if (states.contains(WidgetState.hovered)) {
-                                    return const Color(0xffD7FF00)
-                                        .withValues(alpha: 0.1);
-                                  }
-                                  return null;
-                                },
-                              ),
-                              foregroundColor:
-                                  WidgetStateProperty.resolveWith<Color>(
-                                (Set<WidgetState> states) {
-                                  if (states.contains(WidgetState.hovered)) {
-                                    return const Color(0xffD7FF00);
-                                  }
-                                  return Colors.grey;
-                                },
-                              ),
-                            ),
-                            child: const Text('回复',
-                                style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                      const Divider(),
-                    ],
-                  ),
-                ),
+          ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
@@ -223,6 +275,26 @@ class _RepliesState extends State<Replies> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildReplyRemovalAnimation(CommentModel reply, Widget child) {
+    final removing = widget.removingCommentIds.contains(reply.id);
+    return AnimatedOpacity(
+      opacity: removing ? 0 : 1,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: ClipRect(
+          child: Align(
+            heightFactor: removing ? 0 : 1,
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 
@@ -339,6 +411,42 @@ class _RepliesState extends State<Replies> {
                 ),
                 child: const Text('回复', style: TextStyle(fontSize: 12)),
               ),
+              if (widget.onDelete != null) ...[
+                const SizedBox(width: 8),
+                Obx(() {
+                  final user = c.user.value;
+                  final currentAuthorId = c.authorId.value ?? user?.authorId;
+                  final isMe = currentAuthorId != null &&
+                      currentAuthorId == reply.author.authorId;
+                  if (!isMe) return const SizedBox.shrink();
+
+                  final deleting = widget.removingCommentIds.contains(reply.id);
+
+                  return TextButton(
+                    onPressed: deleting ? null : () => widget.onDelete?.call(reply),
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      minimumSize: WidgetStateProperty.all(Size.zero),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor:
+                          WidgetStateProperty.all(Colors.redAccent),
+                      overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                        (Set<WidgetState> states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return Colors.red.withValues(alpha: 0.12);
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    child: Text(
+                      deleting ? '删除中...' : '删除',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  );
+                }),
+              ],
             ],
           ),
           const Divider(),

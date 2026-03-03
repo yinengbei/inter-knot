@@ -1027,6 +1027,9 @@ class Api extends BaseConnect {
     return createAuthor(name: name, ensureUniqueSlug: true);
   }
 
+  Future<Response<Map<String, dynamic>>> deleteComment(String id) =>
+      delete('/api/comments/$id');
+
   Future<Response<Map<String, dynamic>>> deleteDiscussion(String id) =>
       delete('/api/articles/$id');
 

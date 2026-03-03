@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:get/get.dart';
+import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/image_viewer.dart';
 import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/components/replies.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/flatten.dart';
+import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:intl/intl.dart';
@@ -40,6 +43,9 @@ class Comment extends StatefulWidget {
 }
 
 class _CommentState extends State<Comment> {
+  final _deletingCommentIds = <String>{};
+  final _removingCommentIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +54,160 @@ class _CommentState extends State<Comment> {
   @override
   void didUpdateWidget(Comment oldWidget) {
     super.didUpdateWidget(oldWidget);
+  }
+
+  bool _removeFromReplies(Set<CommentModel> replies, String id) {
+    for (final reply in replies.toList()) {
+      if (reply.id == id) {
+        replies.remove(reply);
+        return true;
+      }
+      if (_removeFromReplies(reply.replies, id)) return true;
+    }
+    return false;
+  }
+
+  bool _removeCommentById(String id) {
+    for (final page in widget.discussion.comments) {
+      for (final comment in page.nodes.toList()) {
+        if (comment.id == id) {
+          page.nodes.remove(comment);
+          return true;
+        }
+        if (_removeFromReplies(comment.replies, id)) return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _deleteComment(CommentModel comment) async {
+    if (comment.id.isEmpty) {
+      showToast('评论ID无效', isError: true);
+      return;
+    }
+    if (!await c.ensureLogin()) return;
+
+    final user = c.user.value;
+    final currentAuthorId = c.authorId.value ?? user?.authorId;
+    final isMe = currentAuthorId != null &&
+        currentAuthorId == comment.author.authorId;
+    if (!isMe) {
+      showToast('只能删除自己的评论', isError: true);
+      return;
+    }
+
+    final confirmed = await showZZZDialog<bool>(
+      context: context,
+      pageBuilder: (context) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 320,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xff1E1E1E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xff313132),
+                  width: 4,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '确认删除评论',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '删除后不可恢复，确定继续吗？',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('取消'),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text(
+                          '删除',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deletingCommentIds.add(comment.id));
+    try {
+      final res = await Get.find<Api>().deleteComment(comment.id);
+      if (res.hasError) {
+        throw Exception(res.statusText ?? '删除失败');
+      }
+
+      if (mounted) {
+        setState(() => _removingCommentIds.add(comment.id));
+      }
+      await Future.delayed(const Duration(milliseconds: 220));
+
+      if (_removeCommentById(comment.id)) {
+        if (widget.discussion.commentsCount > 0) {
+          widget.discussion.commentsCount--;
+        }
+      }
+
+      if (mounted) setState(() {});
+      showToast('评论已删除');
+    } catch (e) {
+      showToast('删除评论失败: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _deletingCommentIds.remove(comment.id);
+          _removingCommentIds.remove(comment.id);
+        });
+      }
+    }
+  }
+
+  Widget _buildCommentRemovalAnimation(CommentModel comment, Widget child) {
+    final removing = _removingCommentIds.contains(comment.id);
+    return AnimatedOpacity(
+      opacity: removing ? 0 : 1,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: ClipRect(
+          child: Align(
+            heightFactor: removing ? 0 : 1,
+            child: child,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFooter() {
@@ -219,11 +379,50 @@ class _CommentState extends State<Comment> {
                 ),
                 child: const Text('回复', style: TextStyle(fontSize: 12)),
               ),
+              Obx(() {
+                final user = c.user.value;
+                final currentAuthorId = c.authorId.value ?? user?.authorId;
+                final isMe = currentAuthorId != null &&
+                    currentAuthorId == comment.author.authorId;
+                if (!isMe) return const SizedBox.shrink();
+
+                final deleting = _deletingCommentIds.contains(comment.id);
+                return Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: deleting ? null : () => _deleteComment(comment),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(EdgeInsets.zero),
+                        minimumSize: WidgetStateProperty.all(Size.zero),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor:
+                            WidgetStateProperty.all(Colors.redAccent),
+                        overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return Colors.red.withValues(alpha: 0.12);
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      child: Text(
+                        deleting ? '删除中...' : '删除',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ],
           ),
           Replies(
               comment: comment,
               discussion: widget.discussion,
+              onDelete: _deleteComment,
+              removingCommentIds: _removingCommentIds,
               onReply: (id, userName, {addPrefix = false}) =>
                   widget.onReply?.call(id, userName, addPrefix: addPrefix)),
         ],
@@ -238,7 +437,7 @@ class _CommentState extends State<Comment> {
       ],
     );
 
-    return content;
+    return _buildCommentRemovalAnimation(comment, content);
   }
 
   @override
