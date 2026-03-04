@@ -284,6 +284,7 @@ class _HomePageState extends State<HomePage>
           }
           return _buildMobileLevelAndCheckInSection(context, user);
         }),
+        const SizedBox(height: 16),
       ],
     );
 
@@ -291,7 +292,6 @@ class _HomePageState extends State<HomePage>
     final scrollableContent = Column(
       children: [
         // ── Menu group label ──
-        const SizedBox(height: 20),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Align(
@@ -728,14 +728,14 @@ class _HomePageState extends State<HomePage>
     final cannotCheckInNow = !user.canCheckIn;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         color: const Color(0xff1E1E1E),
         border: Border.all(color: const Color(0xff2A2A2A), width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -778,7 +778,7 @@ class _HomePageState extends State<HomePage>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             // Level badge + exp
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -828,7 +828,7 @@ class _HomePageState extends State<HomePage>
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
@@ -839,14 +839,14 @@ class _HomePageState extends State<HomePage>
                 minHeight: 8,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             // Check-in button
             SizedBox(
               width: double.infinity,
               child: cannotCheckInNow
                   ? Container(
                       alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         color: const Color(0xff2A2A2A),
@@ -946,7 +946,7 @@ class _HomePageState extends State<HomePage>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xffD7FF00),
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
