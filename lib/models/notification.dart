@@ -29,6 +29,7 @@ class NotificationModel {
   final String? articleTitle;
   final int? commentId;
   final String? commentContent;
+  final String? targetType;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -42,6 +43,7 @@ class NotificationModel {
     this.articleTitle,
     this.commentId,
     this.commentContent,
+    this.targetType,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -96,6 +98,8 @@ class NotificationModel {
     final documentId = json['documentId'] as String?;
     final id = json['id'] as int? ?? (documentId?.hashCode ?? 0);
 
+    final targetType = json['targetType'] as String?;
+
     return NotificationModel(
       id: id,
       documentId: documentId,
@@ -106,6 +110,7 @@ class NotificationModel {
       articleTitle: articleTitle,
       commentId: commentId,
       commentContent: commentContent,
+      targetType: targetType,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String? ?? json['createdAt'] as String),
     );
@@ -118,7 +123,9 @@ class NotificationModel {
       case NotificationType.reply:
         return '${sender?.name ?? '有人'}回复了你的评论';
       case NotificationType.like:
-        return '${sender?.name ?? '有人'}收藏了你的帖子';
+        return (targetType == 'comment' || commentId != null)
+            ? '${sender?.name ?? '有人'}点赞了你的评论'
+            : '${sender?.name ?? '有人'}点赞了你的帖子';
       case NotificationType.favorite:
         return '${sender?.name ?? '有人'}收藏了你的帖子';
       case NotificationType.mention:

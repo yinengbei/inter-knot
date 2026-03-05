@@ -40,7 +40,7 @@ class NotificationCard extends StatelessWidget {
       case NotificationType.reply:
         return Icons.reply_outlined;
       case NotificationType.like:
-        return Icons.favorite_outline;
+        return Icons.thumb_up_outlined;
       case NotificationType.favorite:
         return Icons.favorite_outline;
       case NotificationType.mention:
@@ -57,7 +57,7 @@ class NotificationCard extends StatelessWidget {
       case NotificationType.reply:
         return const Color(0xff9B59B6);
       case NotificationType.like:
-        return const Color(0xffE74C3C);
+        return const Color(0xffD7FF00);
       case NotificationType.favorite:
         return const Color(0xffE74C3C);
       case NotificationType.mention:

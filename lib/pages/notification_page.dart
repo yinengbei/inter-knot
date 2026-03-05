@@ -34,7 +34,8 @@ class _NotificationPageState extends State<NotificationPage>
   final List<({List<NotificationType>? types, String label, IconData icon})> _tabs = [
     (types: null, label: '全部', icon: Icons.all_inbox),
     (types: [NotificationType.comment, NotificationType.reply], label: '回复', icon: Icons.reply),
-    (types: [NotificationType.like, NotificationType.favorite], label: '收藏', icon: Icons.favorite),
+    (types: [NotificationType.like], label: '点赞', icon: Icons.thumb_up),
+    (types: [NotificationType.favorite], label: '收藏', icon: Icons.favorite),
     (types: [NotificationType.mention], label: '@我', icon: Icons.alternate_email),
     (types: [NotificationType.system], label: '系统', icon: Icons.notifications),
   ];
@@ -165,6 +166,7 @@ class _NotificationPageState extends State<NotificationPage>
             articleTitle: notification.articleTitle,
             commentId: notification.commentId,
             commentContent: notification.commentContent,
+            targetType: notification.targetType,
             createdAt: notification.createdAt,
             updatedAt: notification.updatedAt,
           );
@@ -191,6 +193,7 @@ class _NotificationPageState extends State<NotificationPage>
             articleTitle: n.articleTitle,
             commentId: n.commentId,
             commentContent: n.commentContent,
+            targetType: n.targetType,
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
           );
