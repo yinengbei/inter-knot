@@ -17,6 +17,7 @@ import 'package:inter_knot/pages/create_discussion_page.dart';
 import 'package:inter_knot/pages/home_page.dart';
 import 'package:inter_knot/pages/notification_page.dart';
 import 'package:inter_knot/pages/search_page.dart';
+import 'package:inter_knot/services/captcha_service.dart';
 import 'package:inter_knot/services/update_service.dart';
 
 Future<void> main() async {
@@ -24,6 +25,7 @@ Future<void> main() async {
   await GetStorage.init();
   Get.put(AuthApi());
   Get.put(Api());
+  await Get.putAsync(() => CaptchaService().init());
   Get.put(Controller());
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

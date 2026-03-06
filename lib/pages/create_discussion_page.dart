@@ -16,6 +16,7 @@ import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/helpers/upload_task.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
+import 'package:inter_knot/models/captcha.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 
 import 'package:inter_knot/pages/create_discussion/create_discussion_desktop_footer.dart';
@@ -27,6 +28,7 @@ import 'package:inter_knot/pages/create_discussion/create_discussion_mobile_nav.
 
 import 'package:inter_knot/models/discussion.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:inter_knot/services/captcha_service.dart';
 
 class CreateDiscussionPage extends StatefulWidget {
   const CreateDiscussionPage({super.key, this.discussion});
@@ -689,13 +691,21 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           throw Exception('无法关联作者，请重新登录后再试');
         }
 
-        res = await api.createArticle(
-          title: title,
-          text: markdownText,
-          slug: slug,
-          coverId: finalCoverId,
-          authorId: authorId,
-        );
+        final captchaService = Get.find<CaptchaService>();
+        Future<Response<Map<String, dynamic>>> submitArticle({
+          CaptchaPayload? captcha,
+        }) {
+          return api.createArticle(
+            title: title,
+            text: markdownText,
+            slug: slug,
+            coverId: finalCoverId,
+            authorId: authorId,
+            captcha: captcha,
+          );
+        }
+
+        res = await submitArticle();
 
         // Check for error in REST format (error object) or GraphQL format (errors list)
         final resBody = res.body;
@@ -705,13 +715,30 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           if ((error != null || errors != null) &&
               _isSlugUniqueError(resBody)) {
             slug = _slugifyUnique(title);
-            res = await api.createArticle(
-              title: title,
-              text: markdownText,
-              slug: slug,
-              coverId: finalCoverId,
-              authorId: authorId,
-            );
+            res = await submitArticle();
+          }
+        }
+
+        if (res.hasError &&
+            CaptchaService.isCaptchaRequiredResponse(
+              res.body,
+              expectedScene: CaptchaScene.articleCreate,
+            )) {
+          final captcha = await captchaService.verifyForRequiredResponse(
+            fallbackScene: CaptchaScene.articleCreate,
+            body: res.body,
+          );
+          res = await submitArticle(captcha: captcha);
+
+          final retryBody = res.body;
+          if (retryBody != null) {
+            final error = retryBody['error'];
+            final errors = retryBody['errors'];
+            if ((error != null || errors != null) &&
+                _isSlugUniqueError(retryBody)) {
+              slug = _slugifyUnique(title);
+              res = await submitArticle(captcha: captcha);
+            }
           }
         }
       }
@@ -724,7 +751,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           final error = errorBody['error'];
           final errors = errorBody['errors'];
           if (error is Map) {
-            msg = error['message']?.toString();
+            msg = CaptchaService.resolveErrorMessageFromBody(errorBody) ??
+                error['message']?.toString();
           } else if (errors is List && errors.isNotEmpty) {
             final first = errors.first;
             if (first is Map) {

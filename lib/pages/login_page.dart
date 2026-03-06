@@ -8,6 +8,8 @@ import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/helpers/logger.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/models/author.dart';
+import 'package:inter_knot/models/captcha.dart';
+import 'package:inter_knot/services/captcha_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -131,9 +133,23 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
 
+      final captchaService = Get.find<CaptchaService>();
+      final captcha = await captchaService.verifyIfNeeded(
+        isRegister ? CaptchaScene.register : CaptchaScene.login,
+      );
+
       final res = isRegister
-          ? await BaseConnect.authApi.register(username, email, password)
-          : await BaseConnect.authApi.login(email, password);
+          ? await BaseConnect.authApi.register(
+              username,
+              email,
+              password,
+              captcha: captcha,
+            )
+          : await BaseConnect.authApi.login(
+              email,
+              password,
+              captcha: captcha,
+            );
 
       if (res.token != null) {
         await _onLoginSuccess(res.token!, res.user);
@@ -152,14 +168,18 @@ class _LoginPageState extends State<LoginPage> {
       logger.e('Login failed', error: e, stackTrace: s);
       setState(() {
         if (e is ApiException) {
-          if (!isRegister && e.statusCode == 400) {
+          final captchaMessage =
+              CaptchaService.resolveErrorMessageFromException(e);
+          if (captchaMessage != null) {
+            error = captchaMessage;
+          } else if (!isRegister && e.statusCode == 400) {
             if (e.message.contains('not confirmed')) {
               error = '请先激活绳网账号';
             } else {
               error = '邮箱或密码错误';
             }
           } else {
-            var msg = e.message;
+            var msg = CaptchaService.resolveErrorMessageFromException(e) ?? e.message;
             if (msg == 'email must be a valid email') {
               msg = '邮箱格式不正确';
             } else if (msg.contains('already taken')) {

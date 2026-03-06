@@ -725,6 +725,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.2"
+  gt4_flutter_plugin:
+    dependency: "direct main"
+    description:
+      name: gt4_flutter_plugin
+      sha256: "764f7e9858e4026516d529b02b68e9a3966577bc5cdd1a3041f03fb5372fab1a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.5"
   hashcodes:
     dependency: transitive
     description:

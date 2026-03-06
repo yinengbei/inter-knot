@@ -6,11 +6,27 @@ import 'package:inter_knot/api/api_exception.dart';
 import 'package:inter_knot/constants/api_config.dart';
 import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/models/author.dart';
+import 'package:inter_knot/models/captcha.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/models/pagination.dart';
 import 'package:inter_knot/controllers/data.dart';
+
+String? _captchaErrorMessage(String? code) {
+  switch (code) {
+    case 'CAPTCHA_REQUIRED':
+      return '请先完成验证码验证';
+    case 'CAPTCHA_INVALID':
+      return '验证码未通过，请重试';
+    case 'CAPTCHA_VERIFY_FAILED':
+      return '验证码服务异常，请稍后重试';
+    case 'CAPTCHA_NOT_CONFIGURED':
+      return '验证码服务未配置完成，请稍后再试';
+    default:
+      return null;
+  }
+}
 
 class AuthApi extends GetConnect {
   @override
@@ -28,8 +44,10 @@ class AuthApi extends GetConnect {
     try {
       if (res.body is Map && res.body['error'] != null) {
         final error = res.body['error'];
-        if (error is Map && error['message'] != null) {
-          msg = error['message'];
+        if (error is Map) {
+          msg = _captchaErrorMessage(error['code']?.toString()) ??
+              error['message']?.toString() ??
+              msg;
         } else if (error is String) {
           msg = error;
         }
@@ -38,11 +56,22 @@ class AuthApi extends GetConnect {
     return msg;
   }
 
+  Map<String, dynamic> _withCaptcha(
+    Map<String, dynamic> payload,
+    CaptchaPayload? captcha,
+  ) {
+    if (captcha == null) return payload;
+    return {
+      ...payload,
+      'captcha': captcha.toJson(),
+    };
+  }
+
   Future<({String? token, AuthorModel user})> login(
-      String email, String password) async {
+      String email, String password, {CaptchaPayload? captcha}) async {
     final res = await post(
-      '/api/auth/local',
-      {'identifier': email, 'password': password},
+      captcha == null ? '/api/auth/local' : '/api/auth/local-with-captcha',
+      _withCaptcha({'identifier': email, 'password': password}, captcha),
     );
 
     if (res.hasError) {
@@ -58,10 +87,16 @@ class AuthApi extends GetConnect {
   }
 
   Future<({String? token, AuthorModel user})> register(
-      String username, String email, String password) async {
+      String username, String email, String password,
+      {CaptchaPayload? captcha}) async {
     final res = await post(
-      '/api/auth/local/register',
-      {'username': username, 'email': email, 'password': password},
+      captcha == null
+          ? '/api/auth/local/register'
+          : '/api/auth/register-with-captcha',
+      _withCaptcha(
+        {'username': username, 'email': email, 'password': password},
+        captcha,
+      ),
     );
 
     if (res.hasError) {
@@ -284,7 +319,8 @@ class BaseConnect extends GetConnect {
       if (body is Map) {
         final error = body['error'];
         if (error is Map) {
-          message = error['message']?.toString();
+          message = _captchaErrorMessage(error['code']?.toString()) ??
+              error['message']?.toString();
         } else if (error is String) {
           message = error;
         }
@@ -303,7 +339,7 @@ class BaseConnect extends GetConnect {
       }
 
       throw ApiException(message ?? 'Unknown error',
-          statusCode: response.statusCode, details: response.bodyString);
+          statusCode: response.statusCode, details: response.body);
     }
 
     final body = response.body;
@@ -355,6 +391,17 @@ class Api extends BaseConnect {
     return '${ApiConfig.baseUrl}$url';
   }
 
+  Map<String, dynamic> _withCaptcha(
+    Map<String, dynamic> payload,
+    CaptchaPayload? captcha,
+  ) {
+    if (captcha == null) return payload;
+    return {
+      ...payload,
+      'captcha': captcha.toJson(),
+    };
+  }
+
   String _contentTypeFromFilename(String filename) {
     final ext = filename.toLowerCase();
     if (ext.endsWith('.png')) return 'image/png';
@@ -391,13 +438,17 @@ class Api extends BaseConnect {
       return _contentTypeFromFilename(filename);
     }
 
-    if (normalized == 'image/jpg') return 'image/jpeg';
-
     if (supported.contains(normalized)) {
       return normalized;
     }
 
     return _contentTypeFromFilename(filename);
+  }
+
+  Future<CaptchaConfigModel> getCaptchaConfig() async {
+    final res = await get('/api/captcha/config');
+    final body = unwrapData<Map<String, dynamic>>(res);
+    return CaptchaConfigModel.fromJson(body);
   }
 
   String _slugify(String input, {bool ensureUnique = false}) {
@@ -841,6 +892,7 @@ class Api extends BaseConnect {
     String body, {
     String? authorId,
     String? parentId,
+    CaptchaPayload? captcha,
   }) {
     if (discussionId.isEmpty) {
       throw ApiException('Discussion ID cannot be empty');
@@ -858,7 +910,7 @@ class Api extends BaseConnect {
 
     return post(
       '/api/comments',
-      {'data': data},
+      _withCaptcha({'data': data}, captcha),
     );
   }
 
@@ -963,6 +1015,7 @@ class Api extends BaseConnect {
     required String slug,
     dynamic coverId, // String or List<String>
     String? authorId,
+    CaptchaPayload? captcha,
   }) {
     final Map<String, dynamic> data = {
       'title': title,
@@ -986,7 +1039,7 @@ class Api extends BaseConnect {
 
     return post(
       '/api/articles',
-      {'data': data},
+      _withCaptcha({'data': data}, captcha),
     );
   }
 
@@ -1294,8 +1347,11 @@ class Api extends BaseConnect {
     int? currentExp,
     int? currentLevel,
   })>
-      checkIn() async {
-    final res = await post('/api/check-in', {});
+      checkIn({CaptchaPayload? captcha}) async {
+    final res = await post(
+      '/api/check-in',
+      captcha == null ? <String, dynamic>{} : {'captcha': captcha.toJson()},
+    );
 
     if (res.hasError) {
       String errorMessage = '签到失败';
@@ -1304,9 +1360,12 @@ class Api extends BaseConnect {
         final error = res.body['error'];
         if (error is Map) {
           final code = error['code']?.toString();
-          details = error['details'];
+          details = error['details'] ?? res.body;
 
-          if (code == 'CHECK_IN_ALREADY_TODAY') {
+          final captchaMessage = _captchaErrorMessage(code);
+          if (captchaMessage != null) {
+            errorMessage = captchaMessage;
+          } else if (code == 'CHECK_IN_ALREADY_TODAY') {
             errorMessage = '今日已签到';
           } else if (error['message'] == 'Already checked in today.') {
             // Backward compatibility for old backend message.
