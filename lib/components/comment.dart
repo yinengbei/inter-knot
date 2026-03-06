@@ -209,218 +209,500 @@ class _CommentState extends State<Comment> {
   }
 
   Widget _buildCommentItem(CommentModel comment, int index, bool isMobile) {
-    Widget content = ListTile(
-      titleAlignment: ListTileTitleAlignment.top,
-      contentPadding: EdgeInsets.zero,
-      horizontalTitleGap: 12,
-      minVerticalPadding: 0,
-      leading: ClipOval(
-        child: InkWell(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          borderRadius: BorderRadius.circular(50),
-          onTap: () => launchUrlString(comment.url),
-          child: Avatar(comment.author.avatar),
-        ),
-      ),
-      title: Row(
-        children: [
-          Flexible(
+    if (isMobile) {
+      return _buildCommentRemovalAnimation(
+        comment,
+        _buildMobileCommentItem(comment, index),
+      );
+    }
+
+    return Builder(
+      builder: (itemContext) {
+        Widget content = ListTile(
+          titleAlignment: ListTileTitleAlignment.top,
+          contentPadding: EdgeInsets.zero,
+          horizontalTitleGap: 12,
+          minVerticalPadding: 0,
+          leading: ClipOval(
             child: InkWell(
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(50),
               onTap: () => launchUrlString(comment.url),
-              child: Obx(() {
-                final user = c.user.value;
-                final currentAuthorId = c.authorId.value ?? user?.authorId;
-                final isMe = currentAuthorId != null &&
-                    currentAuthorId == comment.author.authorId;
-                final isOp =
-                    comment.author.login == widget.discussion.author.login;
+              child: Avatar(comment.author.avatar),
+            ),
+          ),
+          title: Row(
+            children: [
+              Flexible(
+                child: InkWell(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  onTap: () => launchUrlString(comment.url),
+                  child: Obx(() {
+                    final user = c.user.value;
+                    final currentAuthorId = c.authorId.value ?? user?.authorId;
+                    final isMe = currentAuthorId != null &&
+                        currentAuthorId == comment.author.authorId;
+                    final isOp =
+                        comment.author.login == widget.discussion.author.login;
 
-                return Text(
-                  '${isOp ? '【楼主】 ' : ''}${isMe ? (user?.name ?? comment.author.name) : comment.author.name}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isMe ? const Color(0xFFFFBC2E) : null,
-                    fontWeight: isMe ? FontWeight.bold : null,
-                    fontSize: 14,
-                  ),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Lv.${comment.author.level ?? 1}',
-            style: const TextStyle(
-              color: Color(0xffD7FF00),
-              fontWeight: FontWeight.bold,
-              fontStyle: FontStyle.italic,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                if (comment.author.login == owner) const MyChip('绳网创始人'),
-                if (collaborators.contains(comment.author.login))
-                  const MyChip('绳网协作者'),
-              ],
-            ),
-          ),
-        ],
-      ),
-      trailing: Obx(() {
-        final user = c.user.value;
-        final currentAuthorId = c.authorId.value ?? user?.authorId;
-        final isMe = currentAuthorId != null &&
-            currentAuthorId == comment.author.authorId;
-        return Card(
-          color: isMe
-              ? const Color(0xFFFFBC2E)
-              : const Color.fromARGB(255, 96, 96, 95),
-          margin: const EdgeInsets.only(right: 9, left: 4),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.zero,
-              topRight: Radius.circular(8),
-              bottomLeft: Radius.circular(8),
-              bottomRight: Radius.circular(8),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
-            child: Text('F${index + 1}',
+                    return Text(
+                      '${isOp ? '【楼主】 ' : ''}${isMe ? (user?.name ?? comment.author.name) : comment.author.name}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isMe ? const Color(0xFFFFBC2E) : null,
+                        fontWeight: isMe ? FontWeight.bold : null,
+                        fontSize: 14,
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Lv.${comment.author.level ?? 1}',
                 style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 3, 3, 3))),
+                  color: Color(0xffD7FF00),
+                  fontWeight: FontWeight.bold,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (comment.author.login == owner) const MyChip('绳网创始人'),
+                    if (collaborators.contains(comment.author.login))
+                      const MyChip('绳网协作者'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          trailing: Obx(() {
+            final user = c.user.value;
+            final currentAuthorId = c.authorId.value ?? user?.authorId;
+            final isMe = currentAuthorId != null &&
+                currentAuthorId == comment.author.authorId;
+            return Card(
+              color: isMe
+                  ? const Color(0xFFFFBC2E)
+                  : const Color.fromARGB(255, 96, 96, 95),
+              margin: const EdgeInsets.only(right: 9, left: 4),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.zero,
+                  topRight: Radius.circular(8),
+                  bottomLeft: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
+                ),
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
+                child: Text('F${index + 1}',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 3, 3, 3))),
+              ),
+            );
+          }),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              SelectionArea(
+                child: HtmlWidget(
+                  comment.bodyHTML,
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xffE0E0E0), // Force light grey color
+                  ),
+                  onTapImage: (data) {
+                    if (data.sources.isEmpty) return;
+                    final url = data.sources.first.url;
+                    ImageViewer.show(context,
+                        imageUrls: [url], heroTagPrefix: null);
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    formatRelativeTime(
+                      comment.createdAt,
+                      fallbackPattern: 'yyyy-MM-dd HH:mm',
+                    ),
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildCommentLikeButton(comment),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => widget.onReply?.call(
+                        comment.id, comment.author.name,
+                        addPrefix: false),
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      minimumSize: WidgetStateProperty.all(Size.zero),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                        (Set<WidgetState> states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return const Color(0xffD7FF00)
+                                .withValues(alpha: 0.1);
+                          }
+                          return null;
+                        },
+                      ),
+                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                        (Set<WidgetState> states) {
+                          if (states.contains(WidgetState.hovered)) {
+                            return const Color(0xffD7FF00);
+                          }
+                          return Colors.grey;
+                        },
+                      ),
+                    ),
+                    child: const Text('回复', style: TextStyle(fontSize: 12)),
+                  ),
+                  Obx(() {
+                    final user = c.user.value;
+                    final currentAuthorId = c.authorId.value ?? user?.authorId;
+                    final isMe = currentAuthorId != null &&
+                        currentAuthorId == comment.author.authorId;
+                    if (!isMe) return const SizedBox.shrink();
+
+                    final deleting = _deletingCommentIds.contains(comment.id);
+                    return Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed:
+                              deleting ? null : () => _deleteComment(comment),
+                          style: ButtonStyle(
+                            padding: WidgetStateProperty.all(EdgeInsets.zero),
+                            minimumSize: WidgetStateProperty.all(Size.zero),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor:
+                                WidgetStateProperty.all(Colors.redAccent),
+                            overlayColor:
+                                WidgetStateProperty.resolveWith<Color?>(
+                              (Set<WidgetState> states) {
+                                if (states.contains(WidgetState.hovered)) {
+                                  return Colors.red.withValues(alpha: 0.12);
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          child: Text(
+                            deleting ? '删除中...' : '删除',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+              Replies(
+                  comment: comment,
+                  discussion: widget.discussion,
+                  onDelete: _deleteComment,
+                  removingCommentIds: _removingCommentIds,
+                  onCollapseScrollToParent: () {
+                    Scrollable.ensureVisible(
+                      itemContext,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: 0.0,
+                    );
+                  },
+                  onReply: (id, userName, {addPrefix = false}) =>
+                      widget.onReply?.call(id, userName, addPrefix: addPrefix)),
+            ],
           ),
         );
-      }),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-          SelectionArea(
-            child: HtmlWidget(
-              comment.bodyHTML,
-              textStyle: const TextStyle(
-                fontSize: 16,
-                color: Color(0xffE0E0E0), // Force light grey color
-              ),
-              onTapImage: (data) {
-                if (data.sources.isEmpty) return;
-                final url = data.sources.first.url;
-                ImageViewer.show(context,
-                    imageUrls: [url], heroTagPrefix: null);
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                formatRelativeTime(
-                  comment.createdAt,
-                  fallbackPattern: 'yyyy-MM-dd HH:mm',
-                ),
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(width: 8),
-              _buildCommentLikeButton(comment),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => widget.onReply
-                    ?.call(comment.id, comment.author.name, addPrefix: false),
-                style: ButtonStyle(
-                  padding: WidgetStateProperty.all(EdgeInsets.zero),
-                  minimumSize: WidgetStateProperty.all(Size.zero),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  overlayColor: WidgetStateProperty.resolveWith<Color?>(
-                    (Set<WidgetState> states) {
-                      if (states.contains(WidgetState.hovered)) {
-                        return const Color(0xffD7FF00).withValues(alpha: 0.1);
-                      }
-                      return null;
-                    },
-                  ),
-                  foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                    (Set<WidgetState> states) {
-                      if (states.contains(WidgetState.hovered)) {
-                        return const Color(0xffD7FF00);
-                      }
-                      return Colors.grey;
-                    },
-                  ),
-                ),
-                child: const Text('回复', style: TextStyle(fontSize: 12)),
-              ),
-              Obx(() {
-                final user = c.user.value;
-                final currentAuthorId = c.authorId.value ?? user?.authorId;
-                final isMe = currentAuthorId != null &&
-                    currentAuthorId == comment.author.authorId;
-                if (!isMe) return const SizedBox.shrink();
 
-                final deleting = _deletingCommentIds.contains(comment.id);
-                return Row(
+        content = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            content,
+            const Divider(thickness: 2, height: 32),
+          ],
+        );
+
+        return _buildCommentRemovalAnimation(comment, content);
+      },
+    );
+  }
+
+  Widget _buildMobileCommentItem(CommentModel comment, int index) {
+    final baseTitleStyle =
+        Theme.of(context).textTheme.titleMedium ?? const TextStyle();
+
+    return Builder(
+      builder: (itemContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
+                    ClipOval(
+                      child: InkWell(
+                        splashColor: Colors.transparent,
+                        highlightColor: Colors.transparent,
+                        borderRadius: BorderRadius.circular(50),
+                        onTap: () => launchUrlString(comment.url),
+                        child: Avatar(comment.author.avatar, size: 38),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    TextButton(
-                      onPressed:
-                          deleting ? null : () => _deleteComment(comment),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(EdgeInsets.zero),
-                        minimumSize: WidgetStateProperty.all(Size.zero),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor:
-                            WidgetStateProperty.all(Colors.redAccent),
-                        overlayColor: WidgetStateProperty.resolveWith<Color?>(
-                          (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.red.withValues(alpha: 0.12);
-                            }
-                            return null;
-                          },
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: InkWell(
+                              splashColor: Colors.transparent,
+                              highlightColor: Colors.transparent,
+                              onTap: () => launchUrlString(comment.url),
+                              child: Obx(() {
+                                final user = c.user.value;
+                                final currentAuthorId =
+                                    c.authorId.value ?? user?.authorId;
+                                final isMe = currentAuthorId != null &&
+                                    currentAuthorId == comment.author.authorId;
+                                final isOp = comment.author.login ==
+                                    widget.discussion.author.login;
+
+                                return Text(
+                                  '${isOp ? '【楼主】 ' : ''}${isMe ? (user?.name ?? comment.author.name) : comment.author.name}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: baseTitleStyle.copyWith(
+                                    color: isMe
+                                        ? const Color(0xFFFFBC2E)
+                                        : baseTitleStyle.color,
+                                    fontWeight: isMe
+                                        ? FontWeight.bold
+                                        : baseTitleStyle.fontWeight,
+                                    fontSize: 16,
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Lv.${comment.author.level ?? 1}',
+                            style: const TextStyle(
+                              color: Color(0xffD7FF00),
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Card(
+                      color: const Color.fromARGB(255, 96, 96, 95),
+                      margin: EdgeInsets.zero,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.zero,
+                          topRight: Radius.circular(8),
+                          bottomLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
                         ),
                       ),
-                      child: Text(
-                        deleting ? '删除中...' : '删除',
-                        style: const TextStyle(fontSize: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                          horizontal: 10,
+                        ),
+                        child: Text(
+                          'F${index + 1}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 3, 3, 3),
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                );
-              }),
-            ],
+                ),
+                if (comment.author.login == owner ||
+                    collaborators.contains(comment.author.login)) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      if (comment.author.login == owner) const MyChip('绳网创始人'),
+                      if (collaborators.contains(comment.author.login))
+                        const MyChip('绳网协作者'),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 10),
+                SelectionArea(
+                  child: HtmlWidget(
+                    comment.bodyHTML,
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xffE0E0E0),
+                    ),
+                    onTapImage: (data) {
+                      if (data.sources.isEmpty) return;
+                      final url = data.sources.first.url;
+                      ImageViewer.show(
+                        context,
+                        imageUrls: [url],
+                        heroTagPrefix: null,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            formatRelativeTime(
+                              comment.createdAt,
+                              fallbackPattern: 'yyyy-MM-dd HH:mm',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => widget.onReply?.call(
+                              comment.id,
+                              comment.author.name,
+                              addPrefix: false,
+                            ),
+                            style: ButtonStyle(
+                              padding: WidgetStateProperty.all(EdgeInsets.zero),
+                              minimumSize: WidgetStateProperty.all(Size.zero),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              overlayColor:
+                                  WidgetStateProperty.resolveWith<Color?>(
+                                (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.hovered)) {
+                                    return const Color(0xffD7FF00).withValues(
+                                      alpha: 0.1,
+                                    );
+                                  }
+                                  return null;
+                                },
+                              ),
+                              foregroundColor:
+                                  WidgetStateProperty.resolveWith<Color>(
+                                (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.hovered)) {
+                                    return const Color(0xffD7FF00);
+                                  }
+                                  return Colors.grey;
+                                },
+                              ),
+                            ),
+                            child: const Text('回复',
+                                style: TextStyle(fontSize: 12)),
+                          ),
+                          Obx(() {
+                            final user = c.user.value;
+                            final currentAuthorId =
+                                c.authorId.value ?? user?.authorId;
+                            final isMe = currentAuthorId != null &&
+                                currentAuthorId == comment.author.authorId;
+                            if (!isMe) return const SizedBox.shrink();
+
+                            final deleting = _deletingCommentIds.contains(
+                              comment.id,
+                            );
+                            return TextButton(
+                              onPressed: deleting
+                                  ? null
+                                  : () => _deleteComment(comment),
+                              style: ButtonStyle(
+                                padding:
+                                    WidgetStateProperty.all(EdgeInsets.zero),
+                                minimumSize: WidgetStateProperty.all(Size.zero),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor:
+                                    WidgetStateProperty.all(Colors.redAccent),
+                                overlayColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                  (Set<WidgetState> states) {
+                                    if (states.contains(WidgetState.hovered)) {
+                                      return Colors.red.withValues(alpha: 0.12);
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              child: Text(
+                                deleting ? '删除中...' : '删除',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildCommentLikeButton(comment),
+                  ],
+                ),
+                Replies(
+                  comment: comment,
+                  discussion: widget.discussion,
+                  onDelete: _deleteComment,
+                  removingCommentIds: _removingCommentIds,
+                  onCollapseScrollToParent: () {
+                    Scrollable.ensureVisible(
+                      itemContext,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: 0.0,
+                    );
+                  },
+                  onReply: (id, userName, {addPrefix = false}) =>
+                      widget.onReply?.call(id, userName, addPrefix: addPrefix),
+                ),
+              ],
+            ),
           ),
-          Replies(
-              comment: comment,
-              discussion: widget.discussion,
-              onDelete: _deleteComment,
-              removingCommentIds: _removingCommentIds,
-              onReply: (id, userName, {addPrefix = false}) =>
-                  widget.onReply?.call(id, userName, addPrefix: addPrefix)),
+          const Divider(thickness: 2, height: 32),
         ],
       ),
     );
-
-    content = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        content,
-        const Divider(thickness: 2, height: 32),
-      ],
-    );
-
-    return _buildCommentRemovalAnimation(comment, content);
   }
 
   @override

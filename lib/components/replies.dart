@@ -19,6 +19,7 @@ class Replies extends StatefulWidget {
     required this.onReply,
     this.onDelete,
     this.removingCommentIds = const <String>{},
+    this.onCollapseScrollToParent,
   });
 
   final CommentModel comment;
@@ -26,6 +27,7 @@ class Replies extends StatefulWidget {
   final void Function(String id, String? userName, {bool addPrefix}) onReply;
   final Future<void> Function(CommentModel comment)? onDelete;
   final Set<String> removingCommentIds;
+  final VoidCallback? onCollapseScrollToParent;
 
   @override
   State<Replies> createState() => _RepliesState();
@@ -297,7 +299,12 @@ class _RepliesState extends State<Replies> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
-            onPressed: () => setState(() => _expanded = false),
+            onPressed: () {
+              setState(() => _expanded = false);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                widget.onCollapseScrollToParent?.call();
+              });
+            },
             style: ButtonStyle(
               overlayColor: WidgetStateProperty.resolveWith<Color?>(
                 (Set<WidgetState> states) {
@@ -422,75 +429,90 @@ class _RepliesState extends State<Replies> {
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                formatRelativeTime(
-                  reply.createdAt,
-                  fallbackPattern: 'yyyy-MM-dd HH:mm',
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      formatRelativeTime(
+                        reply.createdAt,
+                        fallbackPattern: 'yyyy-MM-dd HH:mm',
+                      ),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    TextButton(
+                      onPressed: () => widget.onReply(
+                        widget.comment.id,
+                        reply.author.name,
+                        addPrefix: true,
+                      ),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(EdgeInsets.zero),
+                        minimumSize: WidgetStateProperty.all(Size.zero),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: WidgetStateProperty.all(Colors.grey),
+                        overlayColor: WidgetStateProperty.resolveWith<Color?>(
+                          (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.hovered)) {
+                              return const Color(0xffD7FF00).withValues(
+                                alpha: 0.1,
+                              );
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      child: const Text('回复', style: TextStyle(fontSize: 12)),
+                    ),
+                    if (widget.onDelete != null)
+                      Obx(() {
+                        final user = c.user.value;
+                        final currentAuthorId =
+                            c.authorId.value ?? user?.authorId;
+                        final isMe = currentAuthorId != null &&
+                            currentAuthorId == reply.author.authorId;
+                        if (!isMe) return const SizedBox.shrink();
+
+                        final deleting =
+                            widget.removingCommentIds.contains(reply.id);
+
+                        return TextButton(
+                          onPressed: deleting
+                              ? null
+                              : () => widget.onDelete?.call(reply),
+                          style: ButtonStyle(
+                            padding: WidgetStateProperty.all(EdgeInsets.zero),
+                            minimumSize: WidgetStateProperty.all(Size.zero),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor:
+                                WidgetStateProperty.all(Colors.redAccent),
+                            overlayColor:
+                                WidgetStateProperty.resolveWith<Color?>(
+                              (Set<WidgetState> states) {
+                                if (states.contains(WidgetState.hovered)) {
+                                  return Colors.red.withValues(alpha: 0.12);
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          child: Text(
+                            deleting ? '删除中...' : '删除',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        );
+                      }),
+                  ],
                 ),
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(width: 8),
               _buildReplyLikeButton(reply),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => widget.onReply(
-                    widget.comment.id, reply.author.name,
-                    addPrefix: true),
-                style: ButtonStyle(
-                  padding: WidgetStateProperty.all(EdgeInsets.zero),
-                  minimumSize: WidgetStateProperty.all(Size.zero),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  foregroundColor: WidgetStateProperty.all(Colors.grey),
-                  overlayColor: WidgetStateProperty.resolveWith<Color?>(
-                    (Set<WidgetState> states) {
-                      if (states.contains(WidgetState.hovered)) {
-                        return const Color(0xffD7FF00).withValues(alpha: 0.1);
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                child: const Text('回复', style: TextStyle(fontSize: 12)),
-              ),
-              if (widget.onDelete != null) ...[
-                const SizedBox(width: 8),
-                Obx(() {
-                  final user = c.user.value;
-                  final currentAuthorId = c.authorId.value ?? user?.authorId;
-                  final isMe = currentAuthorId != null &&
-                      currentAuthorId == reply.author.authorId;
-                  if (!isMe) return const SizedBox.shrink();
-
-                  final deleting = widget.removingCommentIds.contains(reply.id);
-
-                  return TextButton(
-                    onPressed:
-                        deleting ? null : () => widget.onDelete?.call(reply),
-                    style: ButtonStyle(
-                      padding: WidgetStateProperty.all(EdgeInsets.zero),
-                      minimumSize: WidgetStateProperty.all(Size.zero),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      foregroundColor:
-                          WidgetStateProperty.all(Colors.redAccent),
-                      overlayColor: WidgetStateProperty.resolveWith<Color?>(
-                        (Set<WidgetState> states) {
-                          if (states.contains(WidgetState.hovered)) {
-                            return Colors.red.withValues(alpha: 0.12);
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    child: Text(
-                      deleting ? '删除中...' : '删除',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  );
-                }),
-              ],
             ],
           ),
           const Divider(),
