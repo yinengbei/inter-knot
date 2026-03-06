@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inter_knot/helpers/image_compress_helper.dart';
 
 class CreateDiscussionMobileNav extends StatelessWidget {
   const CreateDiscussionMobileNav({
@@ -6,6 +7,8 @@ class CreateDiscussionMobileNav extends StatelessWidget {
     required this.isLoading,
     required this.onPickImage,
     required this.onSubmit,
+    required this.selectedFormat,
+    required this.onFormatChanged,
     this.imageCount = 0,
     this.uploadingCount = 0,
   });
@@ -13,6 +16,8 @@ class CreateDiscussionMobileNav extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onPickImage;
   final VoidCallback onSubmit;
+  final UploadImageFormat selectedFormat;
+  final ValueChanged<UploadImageFormat> onFormatChanged;
   final int imageCount;
   final int uploadingCount;
 
@@ -28,15 +33,17 @@ class CreateDiscussionMobileNav extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Image picker button
           _ToolButton(
             icon: Icons.image_outlined,
             label: imageCount > 0 ? '$imageCount' : null,
             sublabel: uploadingCount > 0 ? '上传中$uploadingCount' : null,
             onTap: onPickImage,
           ),
+          _FormatToggle(
+            selectedFormat: selectedFormat,
+            onChanged: onFormatChanged,
+          ),
           const Spacer(),
-          // Submit button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: isLoading
@@ -74,6 +81,78 @@ class CreateDiscussionMobileNav extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FormatToggle extends StatelessWidget {
+  const _FormatToggle({
+    required this.selectedFormat,
+    required this.onChanged,
+  });
+
+  final UploadImageFormat selectedFormat;
+  final ValueChanged<UploadImageFormat> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xff101010),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xff2A2A2A)),
+      ),
+      child: Row(
+        children: [
+          _SmallFormatButton(
+            label: 'WebP',
+            selected: selectedFormat == UploadImageFormat.webp,
+            onTap: () => onChanged(UploadImageFormat.webp),
+          ),
+          _SmallFormatButton(
+            label: 'JPG',
+            selected: selectedFormat == UploadImageFormat.jpg,
+            onTap: () => onChanged(UploadImageFormat.jpg),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallFormatButton extends StatelessWidget {
+  const _SmallFormatButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xffD7FF00) : Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: selected ? Colors.black : const Color(0xffA0A0A0),
+          ),
+        ),
       ),
     );
   }
