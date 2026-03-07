@@ -6,6 +6,9 @@ class CreateDiscussionMobileNav extends StatelessWidget {
     required this.isLoading,
     required this.onPickImage,
     required this.onSubmit,
+    this.showCompressionToggle = false,
+    this.compressBeforeUpload = true,
+    this.onCompressionChanged,
     this.imageCount = 0,
     this.uploadingCount = 0,
   });
@@ -13,6 +16,9 @@ class CreateDiscussionMobileNav extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onPickImage;
   final VoidCallback onSubmit;
+  final bool showCompressionToggle;
+  final bool compressBeforeUpload;
+  final ValueChanged<bool>? onCompressionChanged;
   final int imageCount;
   final int uploadingCount;
 
@@ -35,6 +41,14 @@ class CreateDiscussionMobileNav extends StatelessWidget {
             sublabel: uploadingCount > 0 ? '上传中$uploadingCount' : null,
             onTap: onPickImage,
           ),
+          if (showCompressionToggle)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: _CompressionSwitch(
+                value: compressBeforeUpload,
+                onChanged: isLoading ? null : onCompressionChanged,
+              ),
+            ),
           const Spacer(),
           // Submit button
           Padding(
@@ -79,6 +93,47 @@ class CreateDiscussionMobileNav extends StatelessWidget {
   }
 }
 
+class _CompressionSwitch extends StatelessWidget {
+  const _CompressionSwitch({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 8, right: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xff1A1A1A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xff2A2A2A)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '图片压缩',
+            style: TextStyle(
+              color: value ? const Color(0xffD7FF00) : Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: value,
+              activeThumbColor: const Color(0xffD7FF00),
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class _ToolButton extends StatelessWidget {
   const _ToolButton({
     required this.icon,

@@ -61,6 +61,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   // Images State — each image is tracked as an UploadTask with its own status/progress
   final RxList<UploadTask> _uploadTasks = <UploadTask>[].obs;
+  bool _compressBeforeUpload = true;
   bool _isDragging = false;  // 拖拽状态
 
   // 压缩是 CPU 密集型任务：限制并发，避免 UI 卡顿（Web 单线程更明显）
@@ -181,26 +182,30 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   /// 执行单个上传任务：压缩 → 上传
   Future<void> _executeUploadTask(UploadTask task) async {
     try {
-      // 1. 压缩阶段（限流，防止多图并发压缩导致 UI 卡死）
-      await _acquireCompressionSlot();
-      final Uint8List compressed;
-      try {
-        task.status.value = UploadStatus.compressing;
-        task.progress.value = 0;
-        _uploadTasks.refresh();
+      Uint8List uploadBytes = task.bytes;
 
-        // 先让 UI 有机会渲染“压缩中”状态
-        await Future<void>.delayed(const Duration(milliseconds: 16));
+      // 1. 压缩阶段（限流，防止多图并发压缩导致 UI 卡顿）
+      if (_compressBeforeUpload) {
+        await _acquireCompressionSlot();
+        try {
+          task.status.value = UploadStatus.compressing;
+          task.progress.value = 0;
+          _uploadTasks.refresh();
 
-        compressed = await ImageCompressHelper.compress(
-          bytes: task.bytes,
-          filename: task.filename,
-          mimeType: task.mimeType,
-        );
-      } finally {
-        _releaseCompressionSlot();
+          // 先让 UI 有机会渲染“压缩中”状态
+          await Future<void>.delayed(const Duration(milliseconds: 16));
+
+          uploadBytes = await ImageCompressHelper.compress(
+            bytes: task.bytes,
+            filename: task.filename,
+            mimeType: task.mimeType,
+          );
+        } finally {
+          _releaseCompressionSlot();
+        }
       }
-      task.bytes = compressed;
+
+      task.bytes = uploadBytes;
 
       // 2. 上传阶段
       task.status.value = UploadStatus.uploading;
@@ -208,7 +213,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       _uploadTasks.refresh();
 
       final result = await api.uploadImage(
-        bytes: compressed,
+        bytes: uploadBytes,
         filename: task.filename,
         mimeType: task.mimeType,
         onProgress: (percent) {
@@ -305,23 +310,25 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     required String mimeType,
   }) async {
     try {
-      // 压缩图片后再上传
-      await _acquireCompressionSlot();
-      final Uint8List compressed;
-      try {
-        // 给 UI 一个渲染帧，避免主线程长任务造成“假死感”
-        await Future<void>.delayed(const Duration(milliseconds: 16));
-        compressed = await ImageCompressHelper.compress(
-          bytes: bytes,
-          filename: filename,
-          mimeType: mimeType,
-        );
-      } finally {
-        _releaseCompressionSlot();
+      Uint8List uploadBytes = bytes;
+      if (_compressBeforeUpload) {
+        // 压缩图片后再上传
+        await _acquireCompressionSlot();
+        try {
+          // 给 UI 一个渲染帧，避免主线程长任务造成“假死感”
+          await Future<void>.delayed(const Duration(milliseconds: 16));
+          uploadBytes = await ImageCompressHelper.compress(
+            bytes: bytes,
+            filename: filename,
+            mimeType: mimeType,
+          );
+        } finally {
+          _releaseCompressionSlot();
+        }
       }
 
       final result = await api.uploadImage(
-        bytes: compressed,
+        bytes: uploadBytes,
         filename: filename,
         mimeType: mimeType,
         onProgress: (_) {},
@@ -803,7 +810,6 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
@@ -865,6 +871,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                 isLoading: isLoading,
                 onPickImage: _pickImages,
                 onSubmit: () => _submit(isMobile: true),
+                showCompressionToggle: true,
+                compressBeforeUpload: _compressBeforeUpload,
+                onCompressionChanged: (value) {
+                  setState(() {
+                    _compressBeforeUpload = value;
+                  });
+                },
                 imageCount: _uploadTasks.length,
                 uploadingCount: _uploadTasks
                     .where((t) =>
@@ -916,6 +929,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                               CreateDiscussionDesktopFooter(
                                 isLoading: isLoading,
                                 onSubmit: _submit,
+                                showCompressionToggle: _selectedIndex == 1,
+                                compressBeforeUpload: _compressBeforeUpload,
+                                onCompressionChanged: (value) {
+                                  setState(() {
+                                    _compressBeforeUpload = value;
+                                  });
+                                },
                               ),
                             ],
                           ),

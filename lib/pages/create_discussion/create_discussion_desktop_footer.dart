@@ -5,10 +5,16 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.onSubmit,
+    this.showCompressionToggle = false,
+    this.compressBeforeUpload = true,
+    this.onCompressionChanged,
   });
 
   final bool isLoading;
   final VoidCallback onSubmit;
+  final bool showCompressionToggle;
+  final bool compressBeforeUpload;
+  final ValueChanged<bool>? onCompressionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +30,34 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          if (showCompressionToggle)
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff121212),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xff2A2A2A)),
+                  ),
+                  child: Row(
+                    children: [
+                      _CompressionOption(
+                        label: '图片压缩',
+                        selected: compressBeforeUpload,
+                        onTap: isLoading
+                            ? null
+                            : () => onCompressionChanged?.call(!compressBeforeUpload),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            const SizedBox.shrink(),
           Material(
             color: const Color(0xff1A1A1A),
             borderRadius: BorderRadius.circular(28),
@@ -75,6 +107,41 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CompressionOption extends StatelessWidget {
+  const _CompressionOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xffD7FF00) : Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.black : Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
