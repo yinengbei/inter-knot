@@ -25,6 +25,7 @@ import 'package:inter_knot/pages/create_discussion/create_discussion_cover_page.
 import 'package:inter_knot/pages/create_discussion/create_discussion_editor_page.dart';
 import 'package:inter_knot/pages/create_discussion/create_discussion_header.dart';
 import 'package:inter_knot/pages/create_discussion/create_discussion_mobile_nav.dart';
+import 'package:inter_knot/pages/create_discussion/create_discussion_post_settings_sheet.dart';
 
 import 'package:inter_knot/models/discussion.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -62,7 +63,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   // Images State — each image is tracked as an UploadTask with its own status/progress
   final RxList<UploadTask> _uploadTasks = <UploadTask>[].obs;
   bool _compressBeforeUpload = true;
-  bool _isDragging = false;  // 拖拽状态
+  bool _isDragging = false; // 拖拽状态
 
   // 压缩是 CPU 密集型任务：限制并发，避免 UI 卡顿（Web 单线程更明显）
   final Queue<Completer<void>> _compressionWaiters = Queue<Completer<void>>();
@@ -77,11 +78,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       .toList();
 
   /// 是否有任何图片正在上传/压缩中
-  bool get _isCoverUploading =>
-      _uploadTasks.any((t) =>
-          t.status.value == UploadStatus.uploading ||
-          t.status.value == UploadStatus.compressing ||
-          t.status.value == UploadStatus.pending);
+  bool get _isCoverUploading => _uploadTasks.any((t) =>
+      t.status.value == UploadStatus.uploading ||
+      t.status.value == UploadStatus.compressing ||
+      t.status.value == UploadStatus.pending);
 
   bool isLoading = false;
   int _selectedIndex = 0;
@@ -121,11 +121,13 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   void _setupDropZone() {
     setupDropZone(
       onDropImage: (filename, bytes, mimeType) {
-        _handleDroppedImages([(
-          filename: filename,
-          bytes: bytes,
-          mimeType: mimeType,
-        )]);
+        _handleDroppedImages([
+          (
+            filename: filename,
+            bytes: bytes,
+            mimeType: mimeType,
+          )
+        ]);
       },
       onDragStatusChanged: (isDragging) {
         setState(() {
@@ -166,7 +168,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     required String mimeType,
   }) {
     final task = UploadTask(
-      localId: '${DateTime.now().millisecondsSinceEpoch}_${_uploadTasks.length}',
+      localId:
+          '${DateTime.now().millisecondsSinceEpoch}_${_uploadTasks.length}',
       filename: filename,
       bytes: bytes,
       mimeType: mimeType,
@@ -810,6 +813,25 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       }
     }
   }
+
+  Future<void> _showMobilePostSettingsSheet() {
+    return showCreateDiscussionPostSettingsSheet(
+      context: context,
+      compressBeforeUpload: _compressBeforeUpload,
+      onCompressionChanged: (value) {
+        setState(() {
+          _compressBeforeUpload = value;
+        });
+      },
+    );
+  }
+
+  bool get _isMobileSubmitEnabled {
+    final title = titleController.text.trim();
+    final body = _mobileBodyController.text.trim();
+    return title.isNotEmpty && body.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
@@ -830,6 +852,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       mobileUploadTasks: _uploadTasks,
       onRemoveMobileImage: _removeUploadTask,
       onRetryMobileImage: _retryUploadTask,
+      onPickCoverImages: _pickImages,
+      onOpenPostSettings: _showMobilePostSettingsSheet,
+      mobileCompressBeforeUpload: _compressBeforeUpload,
+      mobileMaxCoverImages: _maxCoverImages,
     );
 
     final content = PageView(
@@ -867,25 +893,27 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       backgroundColor: const Color(0xff121212),
       bottomNavigationBar: isDesktop
           ? null
-          : Obx(() => CreateDiscussionMobileNav(
-                isLoading: isLoading,
-                onPickImage: _pickImages,
-                onSubmit: () => _submit(isMobile: true),
-                showCompressionToggle: true,
-                compressBeforeUpload: _compressBeforeUpload,
-                onCompressionChanged: (value) {
-                  setState(() {
-                    _compressBeforeUpload = value;
-                  });
-                },
-                imageCount: _uploadTasks.length,
-                uploadingCount: _uploadTasks
-                    .where((t) =>
-                        t.status.value == UploadStatus.uploading ||
-                        t.status.value == UploadStatus.compressing ||
-                        t.status.value == UploadStatus.pending)
-                    .length,
-              )),
+          : AnimatedBuilder(
+              animation: Listenable.merge([
+                titleController,
+                _mobileBodyController,
+              ]),
+              builder: (context, _) => Obx(
+                () => CreateDiscussionMobileNav(
+                  isLoading: isLoading,
+                  submitEnabled: _isMobileSubmitEnabled,
+                  onPickImage: _pickImages,
+                  onSubmit: () => _submit(isMobile: true),
+                  imageCount: _uploadTasks.length,
+                  uploadingCount: _uploadTasks
+                      .where((t) =>
+                          t.status.value == UploadStatus.uploading ||
+                          t.status.value == UploadStatus.compressing ||
+                          t.status.value == UploadStatus.pending)
+                      .length,
+                ),
+              ),
+            ),
       body: SafeArea(
         child: Column(
           children: [
@@ -902,7 +930,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                       children: [
                         CreateDiscussionDesktopSidebar(
                           selectedIndex: _selectedIndex,
-                          onSelectPage: (index) => _pageController.jumpToPage(index),
+                          onSelectPage: (index) =>
+                              _pageController.jumpToPage(index),
                         ),
                         Expanded(
                           flex: 9,

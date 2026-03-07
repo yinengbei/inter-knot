@@ -16,6 +16,10 @@ class CreateDiscussionEditorPage extends StatelessWidget {
     this.mobileUploadTasks,
     this.onRemoveMobileImage,
     this.onRetryMobileImage,
+    this.onPickCoverImages,
+    this.onOpenPostSettings,
+    this.mobileCompressBeforeUpload = true,
+    this.mobileMaxCoverImages = 9,
   });
 
   final TextEditingController titleController;
@@ -28,6 +32,10 @@ class CreateDiscussionEditorPage extends StatelessWidget {
   final RxList<UploadTask>? mobileUploadTasks;
   final void Function(int index)? onRemoveMobileImage;
   final void Function(UploadTask task)? onRetryMobileImage;
+  final VoidCallback? onPickCoverImages;
+  final VoidCallback? onOpenPostSettings;
+  final bool mobileCompressBeforeUpload;
+  final int mobileMaxCoverImages;
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +46,14 @@ class CreateDiscussionEditorPage extends StatelessWidget {
         uploadTasks: mobileUploadTasks!,
         onRemoveImage: onRemoveMobileImage!,
         onRetryImage: onRetryMobileImage!,
+        onPickCoverImages: onPickCoverImages!,
+        onOpenPostSettings: onOpenPostSettings!,
+        compressBeforeUpload: mobileCompressBeforeUpload,
+        maxCoverImages: mobileMaxCoverImages,
       );
     }
 
-    // ── Desktop: Quill editor ──
+    // Desktop: Quill editor
     return Column(
       children: [
         TextField(
@@ -108,6 +120,10 @@ class _MobileEditorBody extends StatefulWidget {
     required this.uploadTasks,
     required this.onRemoveImage,
     required this.onRetryImage,
+    required this.onPickCoverImages,
+    required this.onOpenPostSettings,
+    required this.compressBeforeUpload,
+    required this.maxCoverImages,
   });
 
   final TextEditingController titleController;
@@ -115,6 +131,10 @@ class _MobileEditorBody extends StatefulWidget {
   final RxList<UploadTask> uploadTasks;
   final void Function(int index) onRemoveImage;
   final void Function(UploadTask task) onRetryImage;
+  final VoidCallback onPickCoverImages;
+  final VoidCallback onOpenPostSettings;
+  final bool compressBeforeUpload;
+  final int maxCoverImages;
 
   @override
   State<_MobileEditorBody> createState() => _MobileEditorBodyState();
@@ -136,7 +156,9 @@ class _MobileEditorBodyState extends State<_MobileEditorBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title field
+        const SizedBox(height: 10),
+        _buildCoverStrip(),
+        const SizedBox(height: 8),
         TextField(
           controller: widget.titleController,
           focusNode: _titleFocus,
@@ -154,62 +176,168 @@ class _MobileEditorBodyState extends State<_MobileEditorBody> {
               color: Color(0xff505050),
             ),
             border: InputBorder.none,
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
         const Divider(height: 1, color: Color(0xff2A2A2A)),
-        // Body text field
         Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: widget.bodyController,
-                  focusNode: _bodyFocus,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xffE0E0E0),
-                    height: 1.6,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: '说点什么吧...',
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xff505050),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                  ),
-                ),
-                // Inline image thumbnails with upload status
-                Obx(() {
-                  if (widget.uploadTasks.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(widget.uploadTasks.length, (i) {
-                        final task = widget.uploadTasks[i];
-                        return _MobileImageTile(
-                          task: task,
-                          allTasks: widget.uploadTasks,
-                          onRemove: () => widget.onRemoveImage(i),
-                          onRetry: () => widget.onRetryImage(task),
-                        );
-                      }),
-                    ),
-                  );
-                }),
-              ],
+          child: TextField(
+            controller: widget.bodyController,
+            focusNode: _bodyFocus,
+            maxLines: null,
+            keyboardType: TextInputType.multiline,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Color(0xffE0E0E0),
+              height: 1.6,
+            ),
+            decoration: const InputDecoration(
+              hintText: '请尽情发挥吧',
+              hintStyle: TextStyle(
+                fontSize: 16,
+                color: Color(0xff505050),
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.fromLTRB(16, 14, 16, 14),
             ),
           ),
         ),
+        const Divider(height: 1, color: Color(0xff2A2A2A)),
+        Obx(
+          () => _MobileSettingRow(
+            icon: Icons.image_outlined,
+            title: '封面',
+            value: '${widget.uploadTasks.length}/${widget.maxCoverImages}',
+            onTap: widget.onPickCoverImages,
+          ),
+        ),
+        const Divider(height: 1, color: Color(0xff2A2A2A)),
+        _MobileSettingRow(
+          icon: Icons.settings_outlined,
+          title: '帖子设置',
+          onTap: widget.onOpenPostSettings,
+        ),
       ],
+    );
+  }
+
+  Widget _buildCoverStrip() {
+    return SizedBox(
+      height: 92,
+      child: Obx(() {
+        final showAddTile = widget.uploadTasks.length < widget.maxCoverImages;
+        final totalCount = widget.uploadTasks.length + (showAddTile ? 1 : 0);
+
+        if (totalCount == 0) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _MobileCoverAddTile(onTap: widget.onPickCoverImages),
+          );
+        }
+
+        return ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: totalCount,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            if (showAddTile && index == 0) {
+              return _MobileCoverAddTile(onTap: widget.onPickCoverImages);
+            }
+
+            final taskIndex = showAddTile ? index - 1 : index;
+            final task = widget.uploadTasks[taskIndex];
+            return _MobileImageTile(
+              task: task,
+              allTasks: widget.uploadTasks,
+              onRemove: () => widget.onRemoveImage(taskIndex),
+              onRetry: () => widget.onRetryImage(task),
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
+class _MobileCoverAddTile extends StatelessWidget {
+  const _MobileCoverAddTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 90,
+        height: 90,
+        decoration: BoxDecoration(
+          color: const Color(0xff1A1A1A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xff2A2A2A)),
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Color(0xff909090),
+          size: 34,
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileSettingRow extends StatelessWidget {
+  const _MobileSettingRow({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: const Color(0xff9A9A9A)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (value != null)
+              Text(
+                value!,
+                style: const TextStyle(
+                  color: Color(0xff9A9A9A),
+                  fontSize: 14,
+                ),
+              ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.chevron_right,
+              color: Color(0xff8A8A8A),
+              size: 22,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -268,8 +396,7 @@ class _MobileImageTile extends StatelessWidget {
                     color: Color(0xCC000000),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close,
-                      color: Colors.white, size: 14),
+                  child: const Icon(Icons.close, color: Colors.white, size: 14),
                 ),
               ),
             ),
@@ -309,7 +436,8 @@ class _MobileImageTile extends StatelessWidget {
 
   void _openImageViewer(BuildContext context) {
     final doneTasks = allTasks
-        .where((t) => t.status.value == UploadStatus.done && t.serverUrl != null)
+        .where(
+            (t) => t.status.value == UploadStatus.done && t.serverUrl != null)
         .toList();
     final doneUrls = doneTasks.map((t) => t.serverUrl!).toList();
     final doneIndex = doneTasks.indexWhere((t) => t.localId == task.localId);
@@ -404,7 +532,8 @@ class _MobileImageTile extends StatelessWidget {
           ),
         );
       case UploadStatus.error:
-        return const Icon(Icons.error_outline, color: Colors.redAccent, size: 24);
+        return const Icon(Icons.error_outline,
+            color: Colors.redAccent, size: 24);
       case UploadStatus.done:
         return const SizedBox.shrink();
     }

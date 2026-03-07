@@ -4,28 +4,28 @@ class CreateDiscussionMobileNav extends StatelessWidget {
   const CreateDiscussionMobileNav({
     super.key,
     required this.isLoading,
+    required this.submitEnabled,
     required this.onPickImage,
     required this.onSubmit,
-    this.showCompressionToggle = false,
-    this.compressBeforeUpload = true,
-    this.onCompressionChanged,
     this.imageCount = 0,
     this.uploadingCount = 0,
   });
 
   final bool isLoading;
+  final bool submitEnabled;
   final VoidCallback onPickImage;
   final VoidCallback onSubmit;
-  final bool showCompressionToggle;
-  final bool compressBeforeUpload;
-  final ValueChanged<bool>? onCompressionChanged;
   final int imageCount;
   final int uploadingCount;
 
   @override
   Widget build(BuildContext context) {
+    final submitColor = submitEnabled
+        ? const Color(0xffD7FF00)
+        : Color.lerp(const Color(0xffD7FF00), Colors.white, 0.72)!;
+
     return Container(
-      height: 54,
+      height: 62,
       decoration: const BoxDecoration(
         color: Color(0xff181818),
         border: Border(
@@ -34,29 +34,18 @@ class CreateDiscussionMobileNav extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Image picker button
           _ToolButton(
             icon: Icons.image_outlined,
             label: imageCount > 0 ? '$imageCount' : null,
-            sublabel: uploadingCount > 0 ? '上传中$uploadingCount' : null,
+            sublabel:
+                uploadingCount > 0 ? '\u4e0a\u4f20\u4e2d$uploadingCount' : null,
             onTap: onPickImage,
           ),
-          if (showCompressionToggle)
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: _CompressionSwitch(
-                value: compressBeforeUpload,
-                onChanged: isLoading ? null : onCompressionChanged,
-              ),
-            ),
-          const Spacer(),
-          // Submit button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: isLoading
-                ? const SizedBox(
-                    width: 80,
-                    child: Center(
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+              child: isLoading
+                  ? const Center(
                       child: SizedBox(
                         width: 20,
                         height: 20,
@@ -65,68 +54,26 @@ class CreateDiscussionMobileNav extends StatelessWidget {
                           color: Color(0xffD7FF00),
                         ),
                       ),
-                    ),
-                  )
-                : GestureDetector(
-                    onTap: onSubmit,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xffD7FF00),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        '发布',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                    )
+                  : GestureDetector(
+                      onTap: submitEnabled ? onSubmit : null,
+                      child: Container(
+                        height: 42,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: submitColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          '\u53d1\u5e03',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompressionSwitch extends StatelessWidget {
-  const _CompressionSwitch({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 8, right: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xff1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xff2A2A2A)),
-      ),
-      child: Row(
-        children: [
-          Text(
-            '图片压缩',
-            style: TextStyle(
-              color: value ? const Color(0xffD7FF00) : Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Transform.scale(
-            scale: 0.8,
-            child: Switch(
-              value: value,
-              activeThumbColor: const Color(0xffD7FF00),
-              onChanged: onChanged,
             ),
           ),
         ],
@@ -134,6 +81,7 @@ class _CompressionSwitch extends StatelessWidget {
     );
   }
 }
+
 class _ToolButton extends StatelessWidget {
   const _ToolButton({
     required this.icon,
