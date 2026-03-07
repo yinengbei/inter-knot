@@ -119,7 +119,7 @@ class UpdateService {
     }
   }
   
-  /// Download APK file with progress callback using multi-threading
+  /// Download APK file with progress callback
   static Future<String?> downloadApk(
     String url, {
     Function(int received, int total)? onProgress,
@@ -144,7 +144,7 @@ class UpdateService {
       _downloadProgress = 0.0;
       _statusMessage = '正在下载更新...';
       
-      debugPrint('UpdateService: Starting multi-threaded download from $url');
+      debugPrint('UpdateService: Starting single-threaded download from $url');
       
       // Get external storage directory (persists across app restarts)
       final Directory? externalDir = await getExternalStorageDirectory();
@@ -157,33 +157,7 @@ class UpdateService {
       if (await file.exists()) {
         await file.delete();
       }
-      
-      // Check if server supports Range requests
-      final headResponse = await http.get(
-        Uri.parse(url),
-        headers: {'Range': 'bytes=0-0'},
-      );
-      
-      final supportsRange = headResponse.statusCode == 206;
-      final contentRange = headResponse.headers['content-range'];
-      int? totalSize;
-      
-      if (contentRange != null) {
-        final match = RegExp(r'bytes \d+-\d+/(\d+)').firstMatch(contentRange);
-        if (match != null) {
-          totalSize = int.tryParse(match.group(1)!);
-        }
-      }
-      
-      debugPrint('UpdateService: SupportsRange=$supportsRange, TotalSize=$totalSize');
-      
-      // Use multi-threaded download if supported and file is large enough
-      if (supportsRange && totalSize != null && totalSize > 1024 * 1024) {
-        return await _downloadWithMultipleThreads(url, filePath, totalSize, onProgress);
-      } else {
-        // Fallback to single-threaded download
-        return await _downloadSingleThreaded(url, filePath, onProgress);
-      }
+      return await _downloadSingleThreaded(url, filePath, onProgress);
     } catch (e) {
       debugPrint('UpdateService: Error downloading APK: $e');
       _downloadStatus = DownloadStatus.failed;
@@ -191,86 +165,7 @@ class UpdateService {
       return null;
     }
   }
-  
-  /// Multi-threaded download implementation
-  static Future<String?> _downloadWithMultipleThreads(
-    String url,
-    String filePath,
-    int totalSize,
-    Function(int received, int total)? onProgress,
-  ) async {
-    const int threadCount = 6;
-    final int chunkSize = (totalSize / threadCount).ceil();
-    
-    debugPrint('UpdateService: Using $threadCount threads, chunk size: ${(chunkSize / 1024 / 1024).toStringAsFixed(2)}MB');
-    
-    _totalBytes = totalSize;
-    _receivedBytes = 0;
-    
-    final List<List<int>> chunks = List.generate(threadCount, (_) => []);
-    final List<int> chunkProgress = List.filled(threadCount, 0);
-    
-    try {
-      // Download chunks in parallel with streaming
-      await Future.wait(
-        List.generate(threadCount, (index) async {
-          final start = index * chunkSize;
-          final end = (index == threadCount - 1) ? totalSize - 1 : (start + chunkSize - 1);
-          
-          debugPrint('UpdateService: Thread $index downloading bytes $start-$end');
-          
-          final request = http.Request('GET', Uri.parse(url));
-          request.headers['Range'] = 'bytes=$start-$end';
-          final response = await request.send();
-          
-          if (response.statusCode == 206) {
-            final chunkData = <int>[];
-            
-            await for (final data in response.stream) {
-              chunkData.addAll(data);
-              chunkProgress[index] = chunkData.length;
-              
-              // Update total progress in real-time
-              _receivedBytes = chunkProgress.reduce((a, b) => a + b);
-              _downloadProgress = _receivedBytes / _totalBytes;
-              _statusMessage = '正在下载... ${(_receivedBytes / 1024 / 1024).toStringAsFixed(1)}MB / ${(_totalBytes / 1024 / 1024).toStringAsFixed(1)}MB';
-              onProgress?.call(_receivedBytes, _totalBytes);
-            }
-            
-            chunks[index] = chunkData;
-            debugPrint('UpdateService: Thread $index completed, total progress: ${(_downloadProgress * 100).toStringAsFixed(1)}%');
-          } else {
-            throw Exception('Thread $index failed with status ${response.statusCode}');
-          }
-        }),
-      );
-      
-      // Combine chunks and write to file
-      debugPrint('UpdateService: Combining chunks...');
-      final file = File(filePath);
-      final sink = file.openWrite();
-      
-      for (final chunk in chunks) {
-        sink.add(chunk);
-      }
-      
-      await sink.close();
-      
-      debugPrint('UpdateService: Multi-threaded download completed: $filePath');
-      _downloadStatus = DownloadStatus.completed;
-      _downloadedFilePath = filePath;
-      _statusMessage = '下载完成';
-      
-      return filePath;
-    } catch (e) {
-      debugPrint('UpdateService: Multi-threaded download error: $e');
-      _downloadStatus = DownloadStatus.failed;
-      _statusMessage = '下载失败：$e';
-      return null;
-    }
-  }
-  
-  /// Single-threaded download fallback
+  /// Single-threaded download implementation
   static Future<String?> _downloadSingleThreaded(
     String url,
     String filePath,

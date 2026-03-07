@@ -53,3 +53,4 @@ lib/secret.dart
 *.md
 API View LLMs/*
 .windsurfrules
+.codex
