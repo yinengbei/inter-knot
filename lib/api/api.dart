@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:inter_knot/api/api_exception.dart';
 import 'package:inter_knot/constants/api_config.dart';
 import 'package:inter_knot/helpers/box.dart';
+import 'package:inter_knot/helpers/text_sanitizer.dart';
 import 'package:inter_knot/models/author.dart';
 import 'package:inter_knot/models/captcha.dart';
 import 'package:inter_knot/models/comment.dart';
@@ -1017,9 +1018,14 @@ class Api extends BaseConnect {
     String? authorId,
     CaptchaPayload? captcha,
   }) {
+    final sanitizedTitle = sanitizeTextInput(
+      title,
+      preserveNewlines: false,
+    );
+    final sanitizedText = sanitizeTextInput(text);
     final Map<String, dynamic> data = {
-      'title': title,
-      'text': text,
+      'title': sanitizedTitle,
+      'text': sanitizedText,
       'slug': slug,
       'publishedAt': DateTime.now().toIso8601String(),
     };
@@ -1051,8 +1057,10 @@ class Api extends BaseConnect {
     dynamic coverId,
   }) {
     final Map<String, dynamic> data = {};
-    if (title != null) data['title'] = title;
-    if (text != null) data['text'] = text;
+    if (title != null) {
+      data['title'] = sanitizeTextInput(title, preserveNewlines: false);
+    }
+    if (text != null) data['text'] = sanitizeTextInput(text);
     if (slug != null) data['slug'] = slug;
 
     if (coverId != null) {

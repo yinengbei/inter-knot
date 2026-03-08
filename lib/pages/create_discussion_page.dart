@@ -13,6 +13,7 @@ import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/drop_zone.dart';
 import 'package:inter_knot/helpers/image_compress_helper.dart';
 import 'package:inter_knot/helpers/normalize_markdown.dart';
+import 'package:inter_knot/helpers/text_sanitizer.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/helpers/upload_task.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
@@ -631,13 +632,18 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _submit({bool isMobile = false}) async {
-    final title = titleController.text.trim();
+    final title = sanitizeTextInput(
+      titleController.text,
+      preserveNewlines: false,
+    );
     final String markdownText;
     if (isMobile) {
-      markdownText = _mobileBodyController.text.trim();
+      markdownText = sanitizeTextInput(_mobileBodyController.text);
     } else {
       final delta = _quillController.document.toDelta();
-      markdownText = normalizeMarkdown(DeltaToMarkdown().convert(delta));
+      markdownText = sanitizeTextInput(
+        normalizeMarkdown(DeltaToMarkdown().convert(delta)),
+      );
     }
 
     // Pass all uploaded images as cover
