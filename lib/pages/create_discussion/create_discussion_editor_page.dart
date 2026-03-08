@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/image_viewer.dart';
 import 'package:inter_knot/helpers/upload_task.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class CreateDiscussionEditorPage extends StatelessWidget {
   const CreateDiscussionEditorPage({
@@ -28,6 +30,17 @@ class CreateDiscussionEditorPage extends StatelessWidget {
   final RxList<UploadTask>? mobileUploadTasks;
   final void Function(int index)? onRemoveMobileImage;
   final void Function(UploadTask task)? onRetryMobileImage;
+
+  bool _isCtrlPressed() {
+    final keys = HardwareKeyboard.instance.logicalKeysPressed;
+    return keys.contains(LogicalKeyboardKey.controlLeft) ||
+        keys.contains(LogicalKeyboardKey.controlRight);
+  }
+
+  Future<void> _handleLaunchUrl(String url) async {
+    if (!_isCtrlPressed()) return;
+    await launchUrlString(url);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +97,7 @@ class CreateDiscussionEditorPage extends StatelessWidget {
               config: quill.QuillEditorConfig(
                 placeholder: '请输入文本',
                 padding: const EdgeInsets.all(16),
+                onLaunchUrl: _handleLaunchUrl,
                 embedBuilders: [
                   ...FlutterQuillEmbeds.editorBuilders(
                     imageEmbedConfig: QuillEditorImageEmbedConfig(
