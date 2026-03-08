@@ -87,30 +87,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
 
-  bool get _hasMeaningfulDesktopBody {
-    for (final op in _quillController.document.toDelta().toList()) {
-      final data = op.data;
-      if (data is String) {
-        final normalized = data.replaceAll(RegExp(r'[\s\u200B-\u200D\uFEFF]'), '');
-        if (normalized.isNotEmpty) {
-          return true;
-        }
-        continue;
-      }
-      return true;
-    }
-    return false;
-  }
-
-  String _currentBodyText({required bool isMobile}) {
-    if (isMobile) {
-      return _mobileBodyController.text.trim();
-    }
-    if (!_hasMeaningfulDesktopBody) {
+  String _currentBodyText() {
+    final text = _bodyController.text;
+    if (text.trim().isEmpty) {
       return '';
     }
-    final delta = _quillController.document.toDelta();
-    return normalizeMarkdown(DeltaToMarkdown().convert(delta)).trim();
+    return normalizeMarkdown(text).trim();
   }
 
   bool get _isMobileEditorActive {
@@ -118,7 +100,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   String get _activeBodyText {
-    return _currentBodyText(isMobile: _isMobileEditorActive);
+    return _currentBodyText();
   }
 
   bool get _hasDraftCovers => _uploadTasks.isNotEmpty;
@@ -182,19 +164,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
 
     titleController.text = title;
-    _mobileBodyController.text = body;
-    try {
-      final mdDocument = md.Document(
-        encodeHtml: false,
-        extensionSet: md.ExtensionSet.gitHubWeb,
-      );
-      final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
-      final delta = mdToDelta.convert(body);
-      _quillController.document = quill.Document.fromDelta(delta);
-    } catch (e) {
-      debugPrint('Draft markdown parsing failed: $e');
-      _quillController.document = quill.Document()..insert(0, body);
-    }
+    _bodyController.text = body;
 
     _uploadTasks.assignAll(
       covers.map((cover) {
@@ -837,7 +807,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   Future<void> _submit() async {
     final title = titleController.text.trim();
-    final markdownText = _currentBodyText(isMobile: isMobile);
+    final markdownText = _currentBodyText();
 
     // Pass all uploaded images as cover
     // If backend supports multiple, we send list.
