@@ -34,6 +34,14 @@ class AuthApi extends GetConnect {
     httpClient.baseUrl = ApiConfig.baseUrl;
     httpClient.timeout = ApiConfig.timeout;
     httpClient.defaultContentType = 'application/json';
+    if (kIsWeb) {
+      // Browsers reject manually setting Content-Length.
+      httpClient.sendContentLength = false;
+      httpClient.addRequestModifier<dynamic>((request) {
+        request.headers.remove('content-length');
+        return request;
+      });
+    }
   }
 
   String _getErrorMessage(Response res) {
@@ -125,7 +133,15 @@ class BaseConnect extends GetConnect {
     httpClient.baseUrl = ApiConfig.baseUrl;
     httpClient.timeout = ApiConfig.timeout;
     httpClient.defaultContentType = 'application/json';
+    if (kIsWeb) {
+      // package:get sets Content-Length for requests with bodies, which
+      // browsers forbid us from sending manually.
+      httpClient.sendContentLength = false;
+    }
     httpClient.addRequestModifier<dynamic>((request) {
+      if (kIsWeb) {
+        request.headers.remove('content-length');
+      }
       final token = box.read<String>('access_token') ?? '';
       final path = request.url.path;
 

@@ -47,6 +47,10 @@ class _MyDiscussionsPageState extends State<MyDiscussionsPage>
 
   Future<void> _loadMore() async {
     if (isLoading || !hasNextPage.value) return;
+    if (!c.isLogin.value) {
+      hasNextPage.value = false;
+      return;
+    }
 
     final authorId = c.authorId.value ?? c.user.value?.authorId;
     if (authorId == null || authorId.isEmpty) {

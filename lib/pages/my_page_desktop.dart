@@ -579,6 +579,10 @@ class _MyDiscussionsTabState extends State<_MyDiscussionsTab> {
 
   Future<void> _loadMore() async {
     if (isLoading || !hasNextPage.value) return;
+    if (!c.isLogin.value) {
+      hasNextPage.value = false;
+      return;
+    }
 
     final authorId = c.authorId.value ?? c.user.value?.authorId;
     if (authorId == null || authorId.isEmpty) {
@@ -683,6 +687,10 @@ class _MyFavoritesTabState extends State<_MyFavoritesTab> {
 
   Future<void> _loadMore() async {
     if (isLoading || !hasNextPage.value) return;
+    if (!c.isLogin.value) {
+      hasNextPage.value = false;
+      return;
+    }
 
     final authorId = c.authorId.value ?? c.user.value?.authorId;
     if (authorId == null || authorId.isEmpty) {

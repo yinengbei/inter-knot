@@ -186,6 +186,62 @@ class Controller extends GetxController {
     box.remove(key);
   }
 
+  bool _isAuthRequiredError(Object error) {
+    if (error is! ApiException) return false;
+    if (error.statusCode == 401 || error.statusCode == 403) return true;
+
+    final message = error.message.toLowerCase();
+    if (message.contains('forbidden') || message.contains('unauthorized')) {
+      return true;
+    }
+
+    final details = error.details;
+    if (details is Map) {
+      final rawError = details['error'];
+      if (rawError is Map) {
+        final code = rawError['code']?.toString().toLowerCase() ?? '';
+        final detailMessage =
+            rawError['message']?.toString().toLowerCase() ?? '';
+        if (code.contains('forbidden') ||
+            code.contains('unauthorized') ||
+            detailMessage.contains('forbidden') ||
+            detailMessage.contains('unauthorized')) {
+          return true;
+        }
+      } else if (rawError is String) {
+        final raw = rawError.toLowerCase();
+        if (raw.contains('forbidden') || raw.contains('unauthorized')) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _clearStoredSession({bool clearPersistedLogin = true}) async {
+    final u = user.value;
+    user.value = null;
+    authorId.value = null;
+    nextEligibleAtUtc.value = null;
+    _cancelCheckInEligibilityTimer();
+    clearUnreadNotificationCount();
+    myDiscussionsCount.value = 0;
+    _clearCachedAvatarForUser(u);
+    await box.remove('access_token');
+    await box.remove('userId');
+    bookmarks.clear();
+    favoriteIds.clear();
+    _localReadCache.clear();
+    _localViewCache.clear();
+    await box.remove(_localReadCacheKey);
+    await box.remove(_localViewCacheKey);
+    if (clearPersistedLogin) {
+      await pref.setBool('isLogin', false);
+    }
+    isLogin.value = false;
+  }
+
   Future<void> updateUserAvatarFromDiscussionsCache() async {
     final login = user.value?.login;
     if (login == null || login.isEmpty) return;
@@ -230,7 +286,10 @@ class Controller extends GetxController {
     history.refresh();
   }
 
-  Future<void> refreshSelfUserInfo({bool forceAvatarFetch = true}) async {
+  Future<void> refreshSelfUserInfo({
+    bool forceAvatarFetch = true,
+    bool rethrowOnError = false,
+  }) async {
     try {
       final u = await api.getSelfUserInfo('');
 
@@ -293,6 +352,7 @@ class Controller extends GetxController {
       }
     } catch (e) {
       logger.e('Failed to refresh self user info', error: e);
+      if (rethrowOnError) rethrow;
     }
   }
 
@@ -385,7 +445,8 @@ class Controller extends GetxController {
     pageController
         .addListener(() => curPage(pageController.page?.round() ?? 0));
     pref.remove('root_token');
-    isLogin(pref.getBool('isLogin') ?? false);
+    isLogin(false);
+    await pref.setBool('isLogin', false);
     ever(isLogin, (v) => pref.setBool('isLogin', v));
     ever(user, (u) {
       if (u?.userId != null) {
@@ -402,18 +463,14 @@ class Controller extends GetxController {
     // Always check for user info if token exists
     final token = getToken();
     if (token.isNotEmpty) {
-      isLogin(true);
       try {
-        await refreshSelfUserInfo();
+        await refreshSelfUserInfo(rethrowOnError: true);
+        isLogin(true);
         await refreshFavorites();
         await refreshUnreadNotificationCount();
       } catch (e) {
-        // Handle 401 explicitly if it bubbles up, though BaseConnect usually handles it globally.
-        // But here we want to show a specific message "Account not found or abnormal".
-        if (e is ApiException && e.statusCode == 401) {
-          logger.e('Failed to get user info: Unauthorized', error: e);
-          isLogin(false);
-          showToast('账号不存在或异常', isError: true);
+        if (_isAuthRequiredError(e)) {
+          await _clearStoredSession();
         } else {
           logger.e('Failed to get user info', error: e);
         }
@@ -432,7 +489,7 @@ class Controller extends GetxController {
             user(res.user);
             await ensureAuthorForUser(res.user);
             isLogin(true);
-            await refreshSelfUserInfo();
+            await refreshSelfUserInfo(rethrowOnError: true);
             await refreshFavorites();
             await refreshUnreadNotificationCount();
             // Clear pending credentials
@@ -454,31 +511,21 @@ class Controller extends GetxController {
         // Initial login in onInit already handles data fetching
         if (user.value == null) {
           try {
-            await refreshSelfUserInfo();
+            await refreshSelfUserInfo(rethrowOnError: true);
             await refreshFavorites();
             await refreshUnreadNotificationCount();
           } catch (e) {
-            logger.e('Failed to fetch user after login', error: e);
+            if (_isAuthRequiredError(e)) {
+              await _clearStoredSession(clearPersistedLogin: false);
+            } else {
+              logger.e('Failed to fetch user after login', error: e);
+            }
           }
         }
         // Note: Removed redundant refreshFavorites/refreshUnreadNotificationCount
         // when user.value exists, as they're already called during login
       } else {
-        final u = user.value;
-        user.value = null;
-        authorId.value = null;
-        nextEligibleAtUtc.value = null;
-        _cancelCheckInEligibilityTimer();
-        clearUnreadNotificationCount();
-        myDiscussionsCount.value = 0;
-        _clearCachedAvatarForUser(u);
-        box.remove('access_token');
-        bookmarks.clear();
-        favoriteIds.clear();
-        _localReadCache.clear();
-        _localViewCache.clear();
-        box.remove(_localReadCacheKey);
-        box.remove(_localViewCacheKey);
+        await _clearStoredSession(clearPersistedLogin: false);
       }
     });
 
