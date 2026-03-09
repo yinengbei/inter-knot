@@ -25,6 +25,7 @@ class NetworkImageBox extends StatelessWidget {
     this.fadeInDuration,
     this.fadeOutDuration,
     this.preferHtmlElementOnWeb = false,
+    this.onImageLoaded,
   });
 
   final String? url;
@@ -37,6 +38,7 @@ class NetworkImageBox extends StatelessWidget {
   final Duration? fadeInDuration;
   final Duration? fadeOutDuration;
   final bool preferHtmlElementOnWeb;
+  final void Function(ImageInfo)? onImageLoaded;
   final Widget Function(BuildContext context, double? progress) loadingBuilder;
   final Widget Function(BuildContext context) errorBuilder;
 
@@ -61,6 +63,7 @@ class NetworkImageBox extends StatelessWidget {
             : WebHtmlElementStrategy.never,
         placeholderBuilder: (context) => loadingBuilder(context, null),
         errorBuilder: (context, error) => errorBuilder(context),
+        onImageLoaded: onImageLoaded,
       );
     }
 
@@ -82,6 +85,21 @@ class NetworkImageBox extends StatelessWidget {
           return loadingBuilder(context, value);
         },
         errorBuilder: (context, error, stackTrace) => errorBuilder(context),
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (frame != null && onImageLoaded != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final imageStream = NetworkImage(src).resolve(
+                const ImageConfiguration(),
+              );
+              imageStream.addListener(
+                ImageStreamListener((info, _) {
+                  onImageLoaded?.call(info);
+                }),
+              );
+            });
+          }
+          return child;
+        },
       );
     }
     return CachedNetworkImage(
@@ -95,6 +113,19 @@ class NetworkImageBox extends StatelessWidget {
       fadeInDuration: fadeInDuration ?? const Duration(milliseconds: 500),
       fadeOutDuration: fadeOutDuration ?? const Duration(milliseconds: 1000),
       errorWidget: (context, url, error) => errorBuilder(context),
+      imageBuilder: onImageLoaded != null
+          ? (context, imageProvider) {
+              final imageStream = imageProvider.resolve(
+                const ImageConfiguration(),
+              );
+              imageStream.addListener(
+                ImageStreamListener((info, _) {
+                  onImageLoaded?.call(info);
+                }),
+              );
+              return Image(image: imageProvider, fit: fit);
+            }
+          : null,
     );
   }
 }
@@ -356,6 +387,14 @@ class Cover extends StatefulWidget {
 class _CoverState extends State<Cover> {
   double? _imageAspectRatio; // 图片加载后的实际宽高比
 
+  void _onImageLoaded(ImageInfo info) {
+    if (mounted && _imageAspectRatio == null) {
+      setState(() {
+        _imageAspectRatio = info.image.width / info.image.height;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Prefer the high-res image from coverImages if available
@@ -370,41 +409,18 @@ class _CoverState extends State<Cover> {
         fit: BoxFit.cover,
       );
     } else {
-      image = Image.network(
-        highResUrl,
+      image = NetworkImageBox(
+        url: highResUrl,
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.high,
         gaplessPlayback: true,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            return child;
-          }
-          return const SizedBox.shrink();
-        },
-        errorBuilder: (context, error, stackTrace) =>
+        preferHtmlElementOnWeb: true,
+        onImageLoaded: _onImageLoaded,
+        loadingBuilder: (context, progress) => const SizedBox.shrink(),
+        errorBuilder: (context) =>
             Assets.images.defaultCover.image(fit: BoxFit.cover),
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (frame != null && _imageAspectRatio == null) {
-            // 图片加载完成，获取实际尺寸
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final imageStream = NetworkImage(highResUrl).resolve(
-                const ImageConfiguration(),
-              );
-              imageStream.addListener(
-                ImageStreamListener((info, _) {
-                  if (mounted) {
-                    setState(() {
-                      final image = info.image;
-                      _imageAspectRatio = image.width / image.height;
-                    });
-                  }
-                }),
-              );
-            });
-          }
-          return child;
-        },
+        fadeInDuration: const Duration(milliseconds: 500),
       );
     }
 
