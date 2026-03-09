@@ -24,6 +24,7 @@ class NetworkImageBox extends StatelessWidget {
     this.memCacheHeight,
     this.fadeInDuration,
     this.fadeOutDuration,
+    this.preferHtmlElementOnWeb = false,
   });
 
   final String? url;
@@ -35,6 +36,7 @@ class NetworkImageBox extends StatelessWidget {
   final int? memCacheHeight;
   final Duration? fadeInDuration;
   final Duration? fadeOutDuration;
+  final bool preferHtmlElementOnWeb;
   final Widget Function(BuildContext context, double? progress) loadingBuilder;
   final Widget Function(BuildContext context) errorBuilder;
 
@@ -54,6 +56,9 @@ class NetworkImageBox extends StatelessWidget {
         cacheWidth: memCacheWidth,
         cacheHeight: memCacheHeight,
         gaplessPlayback: gaplessPlayback,
+        webHtmlElementStrategy: preferHtmlElementOnWeb
+            ? WebHtmlElementStrategy.prefer
+            : WebHtmlElementStrategy.never,
         placeholderBuilder: (context) => loadingBuilder(context, null),
         errorBuilder: (context, error) => errorBuilder(context),
       );
@@ -369,6 +374,7 @@ class _CoverState extends State<Cover> {
         alignment: Alignment.topCenter,
         filterQuality: FilterQuality.high,
         gaplessPlayback: true,
+        preferHtmlElementOnWeb: true,
         loadingBuilder: (context, progress) => const SizedBox.shrink(),
         errorBuilder: (context) =>
             Assets.images.defaultCover.image(fit: BoxFit.cover),

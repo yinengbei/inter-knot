@@ -10,6 +10,7 @@ class AsyncWebImage extends StatelessWidget {
   final int? cacheWidth;
   final int? cacheHeight;
   final bool gaplessPlayback;
+  final WebHtmlElementStrategy webHtmlElementStrategy;
   final Widget Function(BuildContext context)? placeholderBuilder;
   final Widget Function(BuildContext context, Object error)? errorBuilder;
 
@@ -24,6 +25,7 @@ class AsyncWebImage extends StatelessWidget {
     this.cacheWidth,
     this.cacheHeight,
     this.gaplessPlayback = false,
+    this.webHtmlElementStrategy = WebHtmlElementStrategy.never,
     this.placeholderBuilder,
     this.errorBuilder,
   });
@@ -40,6 +42,7 @@ class AsyncWebImage extends StatelessWidget {
       cacheWidth: cacheWidth,
       cacheHeight: cacheHeight,
       gaplessPlayback: gaplessPlayback,
+      webHtmlElementStrategy: webHtmlElementStrategy,
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded) return child;
         return AnimatedSwitcher(

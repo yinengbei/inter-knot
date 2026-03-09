@@ -1,7 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:inter_knot/components/click_region.dart';
-import 'package:inter_knot/components/discussion_card.dart' show NetworkImageBox;
+import 'package:inter_knot/components/discussion_card.dart'
+    show NetworkImageBox;
 import 'package:inter_knot/components/image_viewer.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
 import 'package:inter_knot/models/discussion.dart';

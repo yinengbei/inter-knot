@@ -506,10 +506,11 @@ class _ImageViewerState extends State<ImageViewer>
                                                 int index) {
                                               final url =
                                                   widget.imageUrls[index];
-                                              final heroTag =
-                                                  widget.heroTagPrefix != null
-                                                      ? '${widget.heroTagPrefix}-$index'
-                                                      : url;
+                                              final heroTag = widget
+                                                          .heroTagPrefix !=
+                                                      null
+                                                  ? '${widget.heroTagPrefix}-$index'
+                                                  : url;
 
                                               return PhotoViewGalleryPageOptions(
                                                 imageProvider:
@@ -517,13 +518,11 @@ class _ImageViewerState extends State<ImageViewer>
                                                 initialScale:
                                                     PhotoViewComputedScale
                                                         .contained,
-                                                minScale:
-                                                    PhotoViewComputedScale
-                                                        .contained,
-                                                maxScale:
-                                                    PhotoViewComputedScale
-                                                            .covered *
-                                                        2,
+                                                minScale: PhotoViewComputedScale
+                                                    .contained,
+                                                maxScale: PhotoViewComputedScale
+                                                        .covered *
+                                                    2,
                                                 filterQuality:
                                                     FilterQuality.medium,
                                                 heroAttributes:
@@ -542,10 +541,9 @@ class _ImageViewerState extends State<ImageViewer>
                                                 },
                                               );
                                             },
-                                            itemCount:
-                                                widget.imageUrls.length,
-                                            loadingBuilder:
-                                                (context, event) => Center(
+                                            itemCount: widget.imageUrls.length,
+                                            loadingBuilder: (context, event) =>
+                                                Center(
                                               child: SizedBox(
                                                 width: 20.0,
                                                 height: 20.0,
@@ -553,8 +551,7 @@ class _ImageViewerState extends State<ImageViewer>
                                                     CircularProgressIndicator(
                                                   value: event == null
                                                       ? 0
-                                                      : event
-                                                              .cumulativeBytesLoaded /
+                                                      : event.cumulativeBytesLoaded /
                                                           (event.expectedTotalBytes ??
                                                               1),
                                                 ),
@@ -562,8 +559,7 @@ class _ImageViewerState extends State<ImageViewer>
                                             ),
                                             backgroundDecoration:
                                                 const BoxDecoration(
-                                                    color:
-                                                        Colors.transparent),
+                                                    color: Colors.transparent),
                                             pageController: _pageController,
                                             onPageChanged: _onPageChanged,
                                           ),

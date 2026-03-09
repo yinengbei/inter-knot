@@ -46,8 +46,8 @@ Future<T?> showZZZDialog<T>({
                       ),
                       // Texture + Overlay
                       Container(
-                        color: Colors.black
-                            .withValues(alpha: 0.6), // Dark overlay
+                        color:
+                            Colors.black.withValues(alpha: 0.6), // Dark overlay
                         child: CustomPaint(
                           painter: PatternPainter(
                             color: Colors.white
