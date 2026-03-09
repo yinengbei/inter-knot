@@ -1702,4 +1702,80 @@ class Api extends BaseConnect {
     return {};
   }
 
+  // ─── Profile API ───
+
+  Future<Map<String, dynamic>> getProfile(String documentId) async {
+    final res = await get('/api/profiles/$documentId');
+    return unwrapData<Map<String, dynamic>>(res);
+  }
+
+  Future<PaginationModel<HDataModel>> getProfileArticles(
+    String documentId,
+    String endCur, {
+    Map<String, dynamic>? authorData,
+  }) async {
+    final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
+
+    final res = await get(
+      '/api/profiles/$documentId/articles',
+      query: {
+        'start': start.toString(),
+        'limit': ApiConfig.defaultPageSize.toString(),
+      },
+    );
+
+    final data = unwrapData<List<dynamic>>(res);
+    
+    // Inject author data into each article if provided
+    if (authorData != null) {
+      for (final article in data) {
+        if (article is Map<String, dynamic>) {
+          article['author'] = authorData;
+        }
+      }
+    }
+    
+    await _mergeReadStatus(data, tag: 'ProfileArticles');
+
+    final hasNext = data.length >= ApiConfig.defaultPageSize;
+    final result = await compute(_parseHDataListAndDiscussionsSync, data);
+
+    final controller = Get.find<Controller>();
+    for (final discussion in result.discussions) {
+      controller.applyLocalOverrides(discussion);
+      HDataModel.upsertCachedDiscussion(discussion);
+    }
+
+    return PaginationModel(
+      nodes: result.nodes,
+      endCursor: (start + ApiConfig.defaultPageSize).toString(),
+      hasNextPage: hasNext,
+    );
+  }
+
+  Future<PaginationModel<Map<String, dynamic>>> getProfileComments(
+    String documentId,
+    String endCur,
+  ) async {
+    final start = int.tryParse(endCur.isEmpty ? '0' : endCur) ?? 0;
+
+    final res = await get(
+      '/api/profiles/$documentId/comments',
+      query: {
+        'start': start.toString(),
+        'limit': ApiConfig.defaultPageSize.toString(),
+      },
+    );
+
+    final data = unwrapData<List<dynamic>>(res);
+    final comments = data.cast<Map<String, dynamic>>();
+
+    final hasNext = comments.length >= ApiConfig.defaultPageSize;
+
+    return PaginationModel(
+      nodes: comments,
+      endCursor: (start + ApiConfig.defaultPageSize).toString(),
+      hasNextPage: hasNext,
+    );
+  }
 }

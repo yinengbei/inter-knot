@@ -6,8 +6,10 @@ import 'package:inter_knot/components/my_chip.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/time_formatter.dart';
 import 'package:inter_knot/models/discussion.dart';
+import 'package:inter_knot/pages/profile_page.dart';
 
 class DiscussionHeaderBar extends StatelessWidget {
   const DiscussionHeaderBar({
@@ -39,15 +41,28 @@ class DiscussionHeaderBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xff2D2D2D),
-                width: 3,
+          GestureDetector(
+            onTap: () {
+              if (discussion.author.authorId != null &&
+                  discussion.author.authorId!.isNotEmpty) {
+                showZZZDialog(
+                  context: context,
+                  pageBuilder: (context) => ProfilePage(
+                    authorDocumentId: discussion.author.authorId!,
+                  ),
+                );
+              }
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xff2D2D2D),
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(maxRadius),
               ),
-              borderRadius: BorderRadius.circular(maxRadius),
+              child: Avatar(discussion.author.avatar),
             ),
-            child: Avatar(discussion.author.avatar),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -63,16 +78,29 @@ class DiscussionHeaderBar extends StatelessWidget {
                         final isMe = authorId != null &&
                             authorId == discussion.author.authorId;
 
-                        return Text(
-                          discussion.author.name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color:
-                                isMe ? const Color(0xFFFFBC2E) : Colors.white,
-                            fontWeight: FontWeight.bold,
+                        return GestureDetector(
+                          onTap: () {
+                            if (discussion.author.authorId != null &&
+                                discussion.author.authorId!.isNotEmpty) {
+                              showZZZDialog(
+                                context: context,
+                                pageBuilder: (context) => ProfilePage(
+                                  authorDocumentId: discussion.author.authorId!,
+                                ),
+                              );
+                            }
+                          },
+                          child: Text(
+                            discussion.author.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color:
+                                  isMe ? const Color(0xFFFFBC2E) : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         );
                       }),
                     ),

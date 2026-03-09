@@ -6,10 +6,11 @@ import 'package:inter_knot/constants/globals.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/components/image_viewer.dart';
+import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/time_formatter.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:inter_knot/pages/profile_page.dart';
 
 class Replies extends StatefulWidget {
   const Replies({
@@ -117,7 +118,17 @@ class _RepliesState extends State<Replies> {
                         splashColor: Colors.transparent,
                         highlightColor: Colors.transparent,
                         borderRadius: BorderRadius.circular(50),
-                        onTap: () => launchUrlString(reply.url),
+                        onTap: () {
+                          if (reply.author.authorId != null &&
+                              reply.author.authorId!.isNotEmpty) {
+                            showZZZDialog(
+                              context: context,
+                              pageBuilder: (context) => ProfilePage(
+                                authorDocumentId: reply.author.authorId!,
+                              ),
+                            );
+                          }
+                        },
                         child: Avatar(reply.author.avatar),
                       ),
                     ),
@@ -127,7 +138,17 @@ class _RepliesState extends State<Replies> {
                           child: InkWell(
                             splashColor: Colors.transparent,
                             highlightColor: Colors.transparent,
-                            onTap: () => launchUrlString(reply.url),
+                            onTap: () {
+                              if (reply.author.authorId != null &&
+                                  reply.author.authorId!.isNotEmpty) {
+                                showZZZDialog(
+                                  context: context,
+                                  pageBuilder: (context) => ProfilePage(
+                                    authorDocumentId: reply.author.authorId!,
+                                  ),
+                                );
+                              }
+                            },
                             child: Obx(() {
                               final user = c.user.value;
                               final currentAuthorId =
@@ -361,7 +382,17 @@ class _RepliesState extends State<Replies> {
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
                   borderRadius: BorderRadius.circular(50),
-                  onTap: () => launchUrlString(reply.url),
+                  onTap: () {
+                    if (reply.author.authorId != null &&
+                        reply.author.authorId!.isNotEmpty) {
+                      showZZZDialog(
+                        context: context,
+                        pageBuilder: (context) => ProfilePage(
+                          authorDocumentId: reply.author.authorId!,
+                        ),
+                      );
+                    }
+                  },
                   child: Avatar(reply.author.avatar, size: 32),
                 ),
               ),
@@ -370,7 +401,17 @@ class _RepliesState extends State<Replies> {
                 child: InkWell(
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
-                  onTap: () => launchUrlString(reply.url),
+                  onTap: () {
+                    if (reply.author.authorId != null &&
+                        reply.author.authorId!.isNotEmpty) {
+                      showZZZDialog(
+                        context: context,
+                        pageBuilder: (context) => ProfilePage(
+                          authorDocumentId: reply.author.authorId!,
+                        ),
+                      );
+                    }
+                  },
                   child: Obx(() {
                     final user = c.user.value;
                     final currentAuthorId = c.authorId.value ?? user?.authorId;

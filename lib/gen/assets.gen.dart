@@ -1,3 +1,5 @@
+// dart format width=80
+
 /// GENERATED CODE - DO NOT MODIFY BY HAND
 /// *****************************************************
 ///  FlutterGen
@@ -5,15 +7,28 @@
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
-// ignore_for_file: directives_ordering,unnecessary_import,implicit_dynamic_list_literal,deprecated_member_use
+// ignore_for_file: deprecated_member_use,directives_ordering,implicit_dynamic_list_literal,unnecessary_import
 
 import 'package:flutter/widgets.dart';
+
+class $AssetsFontsGen {
+  const $AssetsFontsGen();
+
+  /// File path: assets/fonts/Roboto-Regular.woff2
+  String get robotoRegular => 'assets/fonts/Roboto-Regular.woff2';
+
+  /// File path: assets/fonts/zh-cn.ttf
+  String get zhCn => 'assets/fonts/zh-cn.ttf';
+
+  /// List of all assets
+  List<String> get values => [robotoRegular, zhCn];
+}
 
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
-  /// File path: assets/images/bh3.webp
-  AssetGenImage get bh3 => const AssetGenImage('assets/images/bh3.webp');
+  /// File path: assets/images/Bangboo.gif
+  AssetGenImage get bangboo => const AssetGenImage('assets/images/Bangboo.gif');
 
   /// File path: assets/images/close-btn.webp
   AssetGenImage get closeBtn =>
@@ -27,41 +42,42 @@ class $AssetsImagesGen {
   AssetGenImage get discussionPageBgPoint =>
       const AssetGenImage('assets/images/discussion-page-bg-point.webp');
 
+  /// File path: assets/images/pc-page-bg.png
+  AssetGenImage get pcPageBg =>
+      const AssetGenImage('assets/images/pc-page-bg.png');
+
   /// File path: assets/images/profile-photo.webp
   AssetGenImage get profilePhoto =>
       const AssetGenImage('assets/images/profile-photo.webp');
-
-  /// File path: assets/images/sr.webp
-  AssetGenImage get sr => const AssetGenImage('assets/images/sr.webp');
 
   /// File path: assets/images/tab-bg-point.webp
   AssetGenImage get tabBgPoint =>
       const AssetGenImage('assets/images/tab-bg-point.webp');
 
-  /// File path: assets/images/yuanshen.webp
-  AssetGenImage get yuanshen =>
-      const AssetGenImage('assets/images/yuanshen.webp');
-
   /// File path: assets/images/zzz.webp
   AssetGenImage get zzz => const AssetGenImage('assets/images/zzz.webp');
 
+  /// File path: assets/images/zzzicon.png
+  AssetGenImage get zzzicon => const AssetGenImage('assets/images/zzzicon.png');
+
   /// List of all assets
   List<AssetGenImage> get values => [
-        bh3,
+        bangboo,
         closeBtn,
         defaultCover,
         discussionPageBgPoint,
+        pcPageBg,
         profilePhoto,
-        sr,
         tabBgPoint,
-        yuanshen,
-        zzz
+        zzz,
+        zzzicon
       ];
 }
 
 class Assets {
-  Assets._();
+  const Assets._();
 
+  static const $AssetsFontsGen fonts = $AssetsFontsGen();
   static const $AssetsImagesGen images = $AssetsImagesGen();
 }
 
@@ -70,12 +86,14 @@ class AssetGenImage {
     this._assetName, {
     this.size,
     this.flavors = const {},
+    this.animation,
   });
 
   final String _assetName;
 
   final Size? size;
   final Set<String> flavors;
+  final AssetGenImageAnimation? animation;
 
   Image image({
     Key? key,
@@ -95,10 +113,10 @@ class AssetGenImage {
     ImageRepeat repeat = ImageRepeat.noRepeat,
     Rect? centerSlice,
     bool matchTextDirection = false,
-    bool gaplessPlayback = false,
+    bool gaplessPlayback = true,
     bool isAntiAlias = false,
     String? package,
-    FilterQuality filterQuality = FilterQuality.low,
+    FilterQuality filterQuality = FilterQuality.medium,
     int? cacheWidth,
     int? cacheHeight,
   }) {
@@ -144,4 +162,16 @@ class AssetGenImage {
   String get path => _assetName;
 
   String get keyName => _assetName;
+}
+
+class AssetGenImageAnimation {
+  const AssetGenImageAnimation({
+    required this.isAnimation,
+    required this.duration,
+    required this.frames,
+  });
+
+  final bool isAnimation;
+  final Duration duration;
+  final int frames;
 }

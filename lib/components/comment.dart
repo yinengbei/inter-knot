@@ -14,7 +14,7 @@ import 'package:inter_knot/helpers/time_formatter.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/models/comment.dart';
 import 'package:inter_knot/models/discussion.dart';
-import 'package:url_launcher/url_launcher_string.dart';
+import 'package:inter_knot/pages/profile_page.dart';
 
 class Comment extends StatefulWidget {
   const Comment({
@@ -228,7 +228,17 @@ class _CommentState extends State<Comment> {
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
               borderRadius: BorderRadius.circular(50),
-              onTap: () => launchUrlString(comment.url),
+              onTap: () {
+                if (comment.author.authorId != null &&
+                    comment.author.authorId!.isNotEmpty) {
+                  showZZZDialog(
+                    context: itemContext,
+                    pageBuilder: (context) => ProfilePage(
+                      authorDocumentId: comment.author.authorId!,
+                    ),
+                  );
+                }
+              },
               child: Avatar(comment.author.avatar),
             ),
           ),
@@ -238,7 +248,17 @@ class _CommentState extends State<Comment> {
                 child: InkWell(
                   splashColor: Colors.transparent,
                   highlightColor: Colors.transparent,
-                  onTap: () => launchUrlString(comment.url),
+                  onTap: () {
+                    if (comment.author.authorId != null &&
+                        comment.author.authorId!.isNotEmpty) {
+                      showZZZDialog(
+                        context: itemContext,
+                        pageBuilder: (context) => ProfilePage(
+                          authorDocumentId: comment.author.authorId!,
+                        ),
+                      );
+                    }
+                  },
                   child: Obx(() {
                     final user = c.user.value;
                     final currentAuthorId = c.authorId.value ?? user?.authorId;
@@ -466,7 +486,17 @@ class _CommentState extends State<Comment> {
                         splashColor: Colors.transparent,
                         highlightColor: Colors.transparent,
                         borderRadius: BorderRadius.circular(50),
-                        onTap: () => launchUrlString(comment.url),
+                        onTap: () {
+                          if (comment.author.authorId != null &&
+                              comment.author.authorId!.isNotEmpty) {
+                            showZZZDialog(
+                              context: itemContext,
+                              pageBuilder: (context) => ProfilePage(
+                                authorDocumentId: comment.author.authorId!,
+                              ),
+                            );
+                          }
+                        },
                         child: Avatar(comment.author.avatar, size: 38),
                       ),
                     ),
@@ -478,7 +508,17 @@ class _CommentState extends State<Comment> {
                             child: InkWell(
                               splashColor: Colors.transparent,
                               highlightColor: Colors.transparent,
-                              onTap: () => launchUrlString(comment.url),
+                              onTap: () {
+                                if (comment.author.authorId != null &&
+                                    comment.author.authorId!.isNotEmpty) {
+                                  showZZZDialog(
+                                    context: itemContext,
+                                    pageBuilder: (context) => ProfilePage(
+                                      authorDocumentId: comment.author.authorId!,
+                                    ),
+                                  );
+                                }
+                              },
                               child: Obx(() {
                                 final user = c.user.value;
                                 final currentAuthorId =
