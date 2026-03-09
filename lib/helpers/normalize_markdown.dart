@@ -22,10 +22,7 @@ String normalizeMarkdown(String input) {
     RegExp(r'!\[([^\]]*)\]\(([^)\s]+)\)\s*\)+(?=\s|$)'),
     (m) => '![${m[1]}](${m[2]})',
   );
-  // Remove extra newlines added by DeltaToMarkdown (2 newlines -> 1).
-  out = out.replaceAllMapped(
-    RegExp(r'\n{2,}'),
-    (m) => '\n' * ((m[0]!.length + 1) ~/ 2),
-  );
+  // Preserve author-entered line breaks. Once Markdown is stored, collapsing
+  // whitespace here makes Quill -> Markdown round-tripping even more lossy.
   return out;
 }

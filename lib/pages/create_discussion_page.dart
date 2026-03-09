@@ -12,7 +12,6 @@ import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/dialog_helper.dart';
 import 'package:inter_knot/helpers/drop_zone.dart';
 import 'package:inter_knot/helpers/image_compress_helper.dart';
-import 'package:inter_knot/helpers/normalize_markdown.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/helpers/upload_task.dart';
 import 'package:inter_knot/helpers/web_hooks.dart';
@@ -535,15 +534,21 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     if (widget.discussion != null) {
       titleController.text = widget.discussion!.title;
       _mobileBodyController.text = widget.discussion!.rawBodyText;
-      // Convert raw markdown to Delta for Quill
+      // Prefer persisted Quill Delta when available. Fall back to Markdown
+      // only for older articles created before editorState existed.
       try {
-        final mdDocument = md.Document(
-          encodeHtml: false,
-          extensionSet: md.ExtensionSet.gitHubWeb,
-        );
-        final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
-        final delta = mdToDelta.convert(widget.discussion!.rawBodyText);
-        _quillController.document = quill.Document.fromDelta(delta);
+        final editorState = widget.discussion!.editorState;
+        if (editorState != null && editorState.isNotEmpty) {
+          _quillController.document = quill.Document.fromJson(editorState);
+        } else {
+          final mdDocument = md.Document(
+            encodeHtml: false,
+            extensionSet: md.ExtensionSet.gitHubWeb,
+          );
+          final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
+          final delta = mdToDelta.convert(widget.discussion!.rawBodyText);
+          _quillController.document = quill.Document.fromDelta(delta);
+        }
       } catch (e) {
         debugPrint('Markdown parsing failed: $e');
         _quillController.document.insert(0, widget.discussion!.rawBodyText);
@@ -642,12 +647,15 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   Future<void> _submit({bool isMobile = false}) async {
     final title = titleController.text.trim();
-    final String markdownText;
+    final String textValue;
+    final List<dynamic>? editorState;
     if (isMobile) {
-      markdownText = _mobileBodyController.text.trim();
+      textValue = _mobileBodyController.text.trim();
+      editorState = null;
     } else {
       final delta = _quillController.document.toDelta();
-      markdownText = normalizeMarkdown(DeltaToMarkdown().convert(delta));
+      textValue = _quillController.document.toPlainText().trimRight();
+      editorState = delta.toJson();
     }
 
     // Pass all uploaded images as cover
@@ -672,7 +680,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       return;
     }
     // Content check: either text or images must exist
-    if (markdownText.isEmpty && _uploadedImages.isEmpty) {
+    if (textValue.isEmpty && _uploadedImages.isEmpty) {
       showToast('内容不能为空', isError: true);
       return;
     }
@@ -689,7 +697,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         res = await api.updateDiscussion(
           id: widget.discussion!.id,
           title: title,
-          text: markdownText,
+          text: textValue,
+          editorState: editorState,
           coverId: finalCoverId,
         );
       } else {
@@ -707,7 +716,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         }) {
           return api.createArticle(
             title: title,
-            text: markdownText,
+            text: textValue,
+            editorState: editorState,
             slug: slug,
             coverId: finalCoverId,
             authorId: authorId,
@@ -792,9 +802,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
       if (widget.discussion != null) {
         widget.discussion!.title = title;
-        widget.discussion!.rawBodyText = markdownText;
+        widget.discussion!.rawBodyText = textValue;
+        widget.discussion!.editorState = editorState == null
+            ? null
+            : List<dynamic>.from(editorState);
         widget.discussion!.bodyHTML = md.markdownToHtml(
-          markdownText,
+          textValue,
           extensionSet: md.ExtensionSet.gitHubWeb,
         );
       }

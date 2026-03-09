@@ -1029,6 +1029,7 @@ class Api extends BaseConnect {
     required String title,
     required String text,
     required String slug,
+    List<dynamic>? editorState,
     dynamic coverId, // String or List<String>
     String? authorId,
     CaptchaPayload? captcha,
@@ -1036,6 +1037,7 @@ class Api extends BaseConnect {
     final Map<String, dynamic> data = {
       'title': title,
       'text': text,
+      'editorState': editorState,
       'slug': slug,
       'publishedAt': DateTime.now().toIso8601String(),
     };
@@ -1063,12 +1065,14 @@ class Api extends BaseConnect {
     required String id,
     String? title,
     String? text,
+    List<dynamic>? editorState,
     String? slug,
     dynamic coverId,
   }) {
     final Map<String, dynamic> data = {};
     if (title != null) data['title'] = title;
     if (text != null) data['text'] = text;
+    data['editorState'] = editorState;
     if (slug != null) data['slug'] = slug;
 
     if (coverId != null) {

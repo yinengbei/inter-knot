@@ -130,6 +130,9 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
     bodyText: bodyText,
     coverImages: covers,
     rawBodyText: normalized,
+    editorState: json['editorState'] is List
+        ? List<dynamic>.from(json['editorState'] as List)
+        : null,
     // number: ... Removed
     id: json['documentId'] as String? ??
         json['id']?.toString() ??
@@ -179,6 +182,7 @@ class DiscussionModel {
   int databaseId;
   String bodyHTML;
   String rawBodyText;
+  List<dynamic>? editorState;
   String bodyText; // Cached body text
   List<CoverImage> coverImages;
   List<String> get covers => coverImages.map((e) => e.url).toList();
@@ -210,6 +214,9 @@ class DiscussionModel {
     title = other.title;
     bodyHTML = other.bodyHTML;
     rawBodyText = other.rawBodyText;
+    editorState = other.editorState == null
+        ? null
+        : List<dynamic>.from(other.editorState!);
     bodyText = other.bodyText;
     coverImages = other.coverImages;
     createdAt = other.createdAt;
@@ -256,6 +263,7 @@ class DiscussionModel {
     required this.bodyHTML,
     required this.bodyText,
     required this.rawBodyText,
+    this.editorState,
     required this.coverImages,
     // required this.number, // Removed
     required this.id,
@@ -290,6 +298,7 @@ class DiscussionModel {
       'id': databaseId,
       'bodyHTML': bodyHTML,
       'rawBodyText': rawBodyText, // Store raw text for reconstruction
+      'editorState': editorState,
       'text': rawBodyText, // Compatible with parseDiscussionData
       'cover': coverImages
           .map((e) => {'url': e.url, 'width': e.width, 'height': e.height})
