@@ -339,7 +339,7 @@ class _MyPageDesktopState extends State<MyPageDesktop>
                   const SizedBox(width: 8),
                   Tooltip(
                     message:
-                        '每日签到 ：\n- 基础经验： 10 XP\n- 连签奖励：每天额外 +2 XP\n- 每日上限： 50 XP (基础 + 奖励)\n发布文章 ：\n- 每次发布： 12 XP\n发表评论 ：\n- 每次评论： 3 XP',
+                        '自己主动行为：\n• 每日签到：基础 6 XP，连签每天 +1 XP（最多额外 +4），实际 6/7/8/9/10 XP\n• 发布文章：+4 XP\n• 发表评论：+3 XP\n• 给别人点赞：+1 XP\n• 每日上限：50 XP\n\n别人对你产生的行为：\n• 别人点赞你的内容：+1 XP\n• 别人评论你的文章或评论：+1 XP\n• 别人收藏你的文章：+2 XP\n• 每日上限：1000 XP',
                     child: Icon(
                       Icons.help_outline,
                       size: 16,
@@ -392,7 +392,8 @@ class _MyPageDesktopState extends State<MyPageDesktop>
                             if (context.mounted) {
                               String msg = e.toString();
                               if (e is ApiException) {
-                                msg = CaptchaService.resolveErrorMessageFromException(e) ??
+                                msg = CaptchaService
+                                        .resolveErrorMessageFromException(e) ??
                                     e.message;
                                 if (e.statusCode == 409) {
                                   final details = e.details;
@@ -428,15 +429,13 @@ class _MyPageDesktopState extends State<MyPageDesktop>
                                         final utc = dt
                                             .toUtc()
                                             .subtract(const Duration(days: 1));
-                                        final y = utc.year
-                                            .toString()
-                                            .padLeft(4, '0');
+                                        final y =
+                                            utc.year.toString().padLeft(4, '0');
                                         final m = utc.month
                                             .toString()
                                             .padLeft(2, '0');
-                                        final d = utc.day
-                                            .toString()
-                                            .padLeft(2, '0');
+                                        final d =
+                                            utc.day.toString().padLeft(2, '0');
                                         checkInDay = '$y-$m-$d';
                                       }
                                     }
@@ -636,7 +635,7 @@ class _MyDiscussionsTabState extends State<_MyDiscussionsTab> {
           ),
         );
       }
-      
+
       return DiscussionGrid(
         list: discussions(),
         hasNextPage: hasNextPage(),
@@ -745,7 +744,7 @@ class _MyFavoritesTabState extends State<_MyFavoritesTab> {
           ),
         );
       }
-      
+
       return DiscussionGrid(
         list: discussions(),
         hasNextPage: hasNextPage(),

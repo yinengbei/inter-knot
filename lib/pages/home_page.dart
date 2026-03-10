@@ -229,7 +229,8 @@ class _HomePageState extends State<HomePage>
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xffD7FF00).withValues(alpha: 0.12),
+                            color:
+                                const Color(0xffD7FF00).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -342,7 +343,8 @@ class _HomePageState extends State<HomePage>
                     await c.refreshSelfUserInfo();
                     final aid = c.authorId.value ?? c.user.value?.authorId;
                     if (aid != null && aid.isNotEmpty) {
-                      c.myDiscussionsCount.value = await api.getUserDiscussionCount(aid);
+                      c.myDiscussionsCount.value =
+                          await api.getUserDiscussionCount(aid);
                     }
                   }
                 },
@@ -399,8 +401,7 @@ class _HomePageState extends State<HomePage>
                         showUpdateDialog(context, updateInfo);
                       }
                     } else {
-                      showToast('已是最新版本',
-                          duration: const Duration(seconds: 2));
+                      showToast('已是最新版本', duration: const Duration(seconds: 2));
                     }
                   },
                   borderRadius: const BorderRadius.vertical(
@@ -656,7 +657,7 @@ class _HomePageState extends State<HomePage>
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    '每日签到：\n- 基础经验：10 XP\n- 连签奖励：每天额外 +2 XP\n- 每日上限：50 XP（基础 + 奖励）\n\n发布文章：\n- 每次发布：12 XP\n\n发表评论：\n- 每次评论：3 XP',
+                    '自己主动行为：\n• 每日签到：基础 6 XP，连签每天 +1 XP（最多额外 +4），实际 6/7/8/9/10 XP\n• 发布文章：+4 XP\n• 发表评论：+3 XP\n• 给别人点赞：+1 XP\n• 每日上限：50 XP\n\n别人对你产生的行为：\n• 别人点赞你的内容：+1 XP\n• 别人评论你的文章或评论：+1 XP\n• 别人收藏你的文章：+2 XP\n• 每日上限：1000 XP',
                     style: TextStyle(
                       color: Color(0xffB8B8B8),
                       fontSize: 14,
@@ -686,7 +687,8 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildMobileLevelAndCheckInSection(BuildContext context, dynamic user) {
+  Widget _buildMobileLevelAndCheckInSection(
+      BuildContext context, dynamic user) {
     const levelTable = [
       (level: 6, exp: 3200, title: '传奇绳匠'),
       (level: 5, exp: 1600, title: '精英绳匠'),
@@ -704,12 +706,11 @@ class _HomePageState extends State<HomePage>
       orElse: () => levelTable.last,
     );
 
-    final nextConfig = levelTable
-        .cast<({int level, int exp, String title})?>()
-        .firstWhere(
-          (e) => e != null && e.level == currentLevel + 1,
-          orElse: () => null,
-        );
+    final nextConfig =
+        levelTable.cast<({int level, int exp, String title})?>().firstWhere(
+              (e) => e != null && e.level == currentLevel + 1,
+              orElse: () => null,
+            );
 
     double progress = 0.0;
     int nextExpTarget = currentExp;
@@ -793,11 +794,11 @@ class _HomePageState extends State<HomePage>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color:
-                            const Color(0xffD7FF00).withValues(alpha: 0.15),
+                        color: const Color(0xffD7FF00).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: const Color(0xffD7FF00).withValues(alpha: 0.4),
+                            color:
+                                const Color(0xffD7FF00).withValues(alpha: 0.4),
                             width: 1),
                       ),
                       child: Text(
@@ -889,7 +890,8 @@ class _HomePageState extends State<HomePage>
                           if (context.mounted) {
                             String msg = e.toString();
                             if (e is ApiException) {
-                              msg = CaptchaService.resolveErrorMessageFromException(e) ??
+                              msg = CaptchaService
+                                      .resolveErrorMessageFromException(e) ??
                                   e.message;
                               if (e.statusCode == 409) {
                                 final details = e.details;
@@ -902,9 +904,9 @@ class _HomePageState extends State<HomePage>
                                       ? checkInDay
                                       : null;
 
-                                  checkInDay ??= details['checkInDay'
-                                          .toString()]
-                                      ?.toString();
+                                  checkInDay ??=
+                                      details['checkInDay'.toString()]
+                                          ?.toString();
 
                                   final nextEligibleAt =
                                       details['nextEligibleAt']?.toString();
@@ -927,9 +929,8 @@ class _HomePageState extends State<HomePage>
                                           .subtract(const Duration(days: 1));
                                       final y =
                                           utc.year.toString().padLeft(4, '0');
-                                      final m = utc.month
-                                          .toString()
-                                          .padLeft(2, '0');
+                                      final m =
+                                          utc.month.toString().padLeft(2, '0');
                                       final d =
                                           utc.day.toString().padLeft(2, '0');
                                       checkInDay = '$y-$m-$d';
