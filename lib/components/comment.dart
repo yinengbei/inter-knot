@@ -337,18 +337,20 @@ class _CommentState extends State<Comment> {
             children: [
               const SizedBox(height: 8),
               SelectionArea(
-                child: HtmlWidget(
-                  comment.bodyHTML,
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xffE0E0E0), // Force light grey color
+                child: RepaintBoundary(
+                  child: HtmlWidget(
+                    comment.bodyHTML,
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xffE0E0E0), // Force light grey color
+                    ),
+                    onTapImage: (data) {
+                      if (data.sources.isEmpty) return;
+                      final url = data.sources.first.url;
+                      ImageViewer.show(context,
+                          imageUrls: [url], heroTagPrefix: null);
+                    },
                   ),
-                  onTapImage: (data) {
-                    if (data.sources.isEmpty) return;
-                    final url = data.sources.first.url;
-                    ImageViewer.show(context,
-                        imageUrls: [url], heroTagPrefix: null);
-                  },
                 ),
               ),
               const SizedBox(height: 8),
@@ -514,7 +516,8 @@ class _CommentState extends State<Comment> {
                                   showZZZDialog(
                                     context: itemContext,
                                     pageBuilder: (context) => ProfilePage(
-                                      authorDocumentId: comment.author.authorId!,
+                                      authorDocumentId:
+                                          comment.author.authorId!,
                                     ),
                                   );
                                 }
@@ -602,21 +605,23 @@ class _CommentState extends State<Comment> {
                 ],
                 const SizedBox(height: 10),
                 SelectionArea(
-                  child: HtmlWidget(
-                    comment.bodyHTML,
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xffE0E0E0),
+                  child: RepaintBoundary(
+                    child: HtmlWidget(
+                      comment.bodyHTML,
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xffE0E0E0),
+                      ),
+                      onTapImage: (data) {
+                        if (data.sources.isEmpty) return;
+                        final url = data.sources.first.url;
+                        ImageViewer.show(
+                          context,
+                          imageUrls: [url],
+                          heroTagPrefix: null,
+                        );
+                      },
                     ),
-                    onTapImage: (data) {
-                      if (data.sources.isEmpty) return;
-                      final url = data.sources.first.url;
-                      ImageViewer.show(
-                        context,
-                        imageUrls: [url],
-                        heroTagPrefix: null,
-                      );
-                    },
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -39,6 +39,25 @@ class _ProfilePageState extends State<ProfilePage>
   bool _isLoadingArticles = false;
   bool _isLoadingComments = false;
 
+  String _extractBioText(List? bio) {
+    if (bio == null || bio.isEmpty) return '';
+
+    final buffer = StringBuffer();
+    for (final block in bio) {
+      if (block is Map && block['type'] == 'paragraph') {
+        final children = block['children'] as List?;
+        if (children == null) continue;
+
+        for (final child in children) {
+          if (child is Map && child['type'] == 'text') {
+            buffer.write(child['text'] as String? ?? '');
+          }
+        }
+      }
+    }
+    return buffer.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -169,21 +188,7 @@ class _ProfilePageState extends State<ProfilePage>
     final totalComments = stats?['totalComments'] as int? ?? 0;
     final totalLikes = stats?['totalLikes'] as int? ?? 0;
 
-    String bioText = '';
-    if (bio != null && bio.isNotEmpty) {
-      for (final block in bio) {
-        if (block is Map && block['type'] == 'paragraph') {
-          final children = block['children'] as List?;
-          if (children != null) {
-            for (final child in children) {
-              if (child is Map && child['type'] == 'text') {
-                bioText += child['text'] as String? ?? '';
-              }
-            }
-          }
-        }
-      }
-    }
+    final bioText = _extractBioText(bio);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -777,21 +782,7 @@ class _ProfilePageState extends State<ProfilePage>
     final level = user?['level'] as int? ?? 1;
     final exp = user?['exp'] as int? ?? 0;
 
-    String bioText = '';
-    if (bio != null && bio.isNotEmpty) {
-      for (final block in bio) {
-        if (block is Map && block['type'] == 'paragraph') {
-          final children = block['children'] as List?;
-          if (children != null) {
-            for (final child in children) {
-              if (child is Map && child['type'] == 'text') {
-                bioText += child['text'] as String? ?? '';
-              }
-            }
-          }
-        }
-      }
-    }
+    final bioText = _extractBioText(bio);
 
     return Card(
       color: const Color(0xff1E1E1E),

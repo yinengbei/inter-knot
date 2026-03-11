@@ -19,87 +19,133 @@ class DiscussionDetailBox extends StatefulWidget {
 }
 
 class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
+  quill.QuillController? _quillController;
+  int? _contentSignature;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncRichTextController();
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscussionDetailBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncRichTextController();
+  }
+
+  @override
+  void dispose() {
+    _quillController?.dispose();
+    super.dispose();
+  }
+
+  void _syncRichTextController() {
+    final discussion = widget.discussion;
+    final editorState = discussion.editorState;
+    final nextSignature = Object.hash(
+      discussion.id,
+      discussion.lastEditedAt?.millisecondsSinceEpoch ?? 0,
+      discussion.rawBodyText,
+      editorState?.length ?? 0,
+    );
+
+    if (_contentSignature == nextSignature) return;
+    _contentSignature = nextSignature;
+
+    _quillController?.dispose();
+    _quillController = null;
+
+    if (editorState == null || editorState.isEmpty) return;
+
+    try {
+      _quillController = quill.QuillController(
+        document: quill.Document.fromJson(editorState),
+        selection: const TextSelection.collapsed(offset: 0),
+        readOnly: true,
+      );
+    } catch (_) {
+      _quillController = null;
+    }
+  }
+
   Widget _buildMarkdownBody(DiscussionModel discussion) {
-    return SelectionArea(
-      child: MarkdownWidget(
-        data: discussion.rawBodyText,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        config: MarkdownConfig.darkConfig.copy(
-          configs: [
-            ImgConfig(
-              builder: (url, attributes) {
-                return GestureDetector(
-                  onTap: () => ImageViewer.show(
-                    context,
-                    imageUrls: [url],
-                  ),
-                  child: Image.network(
-                    url,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.redAccent,
+    return RepaintBoundary(
+      child: SelectionArea(
+        child: MarkdownWidget(
+          data: discussion.rawBodyText,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          config: MarkdownConfig.darkConfig.copy(
+            configs: [
+              ImgConfig(
+                builder: (url, attributes) {
+                  return GestureDetector(
+                    onTap: () => ImageViewer.show(
+                      context,
+                      imageUrls: [url],
                     ),
-                  ),
-                );
-              },
-            ),
-            LinkConfig(
-              style: const TextStyle(
-                color: Colors.blue,
-                decoration: TextDecoration.underline,
-              ),
-              onTap: (url) {
-                if (url.isNotEmpty) {
-                  launchUrlString(url);
-                }
-              },
-            ),
-            const PConfig(
-              textStyle: TextStyle(
-                fontSize: 16,
-                color: Color(0xffE0E0E0),
-              ),
-            ),
-            PreConfig.darkConfig.copy(
-              wrapper: (child, code, language) => Stack(
-                children: [
-                  child,
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: Text(
-                      language,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.broken_image,
+                        color: Colors.redAccent,
                       ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
-          ],
+              LinkConfig(
+                style: const TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                onTap: (url) {
+                  if (url.isNotEmpty) {
+                    launchUrlString(url);
+                  }
+                },
+              ),
+              const PConfig(
+                textStyle: TextStyle(
+                  fontSize: 16,
+                  color: Color(0xffE0E0E0),
+                ),
+              ),
+              PreConfig.darkConfig.copy(
+                wrapper: (child, code, language) => Stack(
+                  children: [
+                    child,
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Text(
+                        language,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildRichBody(DiscussionModel discussion) {
-    final editorState = discussion.editorState;
-    if (editorState == null || editorState.isEmpty) {
+    final controller = _quillController;
+    if (controller == null) {
       return _buildMarkdownBody(discussion);
     }
 
-    try {
-      final controller = quill.QuillController(
-        document: quill.Document.fromJson(editorState),
-        selection: const TextSelection.collapsed(offset: 0),
-        readOnly: true,
-      );
-
-      return quill.QuillEditor.basic(
+    return RepaintBoundary(
+      child: quill.QuillEditor.basic(
         controller: controller,
         config: quill.QuillEditorConfig(
           scrollable: false,
@@ -119,10 +165,8 @@ class _DiscussionDetailBoxState extends State<DiscussionDetailBox> {
             ),
           ),
         ),
-      );
-    } catch (_) {
-      return _buildMarkdownBody(discussion);
-    }
+      ),
+    );
   }
 
   @override

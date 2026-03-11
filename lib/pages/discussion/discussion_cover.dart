@@ -26,16 +26,62 @@ class Cover extends StatefulWidget {
 class _CoverState extends State<Cover> {
   final _controller = PageController();
   int _currentIndex = 0;
+  String? _resolvedAspectUrl;
+  ImageStream? _aspectRatioImageStream;
+  ImageStreamListener? _aspectRatioImageListener;
+
+  String? get _singleCoverUrl {
+    final coverImages = widget.discussion.coverImages;
+    if (coverImages.length != 1) return null;
+    return coverImages.first.url;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveAspectRatio(_singleCoverUrl);
+  }
+
+  @override
+  void didUpdateWidget(covariant Cover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_singleCoverUrl != _resolvedAspectUrl) {
+      _resolveAspectRatio(_singleCoverUrl);
+    }
+  }
 
   @override
   void dispose() {
+    if (_aspectRatioImageStream != null && _aspectRatioImageListener != null) {
+      _aspectRatioImageStream!.removeListener(_aspectRatioImageListener!);
+    }
     _controller.dispose();
     super.dispose();
   }
 
+  void _resolveAspectRatio(String? url) {
+    if (url == null || url.isEmpty || url == _resolvedAspectUrl) return;
+
+    if (_aspectRatioImageStream != null && _aspectRatioImageListener != null) {
+      _aspectRatioImageStream!.removeListener(_aspectRatioImageListener!);
+    }
+
+    _resolvedAspectUrl = url;
+    final imageStream = NetworkImage(url).resolve(const ImageConfiguration());
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted || _resolvedAspectUrl != url) return;
+      widget.onImageLoaded?.call(info.image.width / info.image.height);
+    });
+
+    _aspectRatioImageStream = imageStream;
+    _aspectRatioImageListener = listener;
+    imageStream.addListener(listener);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final covers = widget.discussion.covers;
+    final coverImages = widget.discussion.coverImages;
+    final covers = coverImages.map((e) => e.url).toList(growable: false);
 
     if (covers.isEmpty) {
       return ClipRRect(
@@ -61,38 +107,18 @@ class _CoverState extends State<Cover> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              url,
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) {
-                  return child;
-                }
-                return const SizedBox.shrink();
-              },
-              errorBuilder: (context, error, stackTrace) => SvgPicture.asset(
-                _defaultDiscussionCoverAsset,
+            child: RepaintBoundary(
+              child: NetworkImageBox(
+                url: url,
                 fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                gaplessPlayback: true,
+                loadingBuilder: (context, progress) => const SizedBox.shrink(),
+                errorBuilder: (context) => SvgPicture.asset(
+                  _defaultDiscussionCoverAsset,
+                  fit: BoxFit.contain,
+                ),
               ),
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (frame != null && widget.onImageLoaded != null) {
-                  // 图片加载完成，获取实际尺寸
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    final imageStream = NetworkImage(url).resolve(
-                      const ImageConfiguration(),
-                    );
-                    imageStream.addListener(
-                      ImageStreamListener((info, _) {
-                        final image = info.image;
-                        final aspectRatio = image.width / image.height;
-                        widget.onImageLoaded?.call(aspectRatio);
-                      }),
-                    );
-                  });
-                }
-                return child;
-              },
             ),
           ),
         ),
@@ -129,22 +155,24 @@ class _CoverState extends State<Cover> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: NetworkImageBox(
-                        url: url,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.medium,
-                        gaplessPlayback: true,
-                        loadingBuilder: (context, progress) =>
-                            const SizedBox.shrink(),
-                        errorBuilder: (context) => Container(
-                          color: Colors.grey[800],
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.white,
+                      child: RepaintBoundary(
+                        child: NetworkImageBox(
+                          url: url,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                          gaplessPlayback: true,
+                          loadingBuilder: (context, progress) =>
+                              const SizedBox.shrink(),
+                          errorBuilder: (context) => Container(
+                            color: Colors.grey[800],
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: Colors.white,
+                            ),
                           ),
+                          fadeInDuration: const Duration(milliseconds: 400),
+                          fadeOutDuration: const Duration(milliseconds: 200),
                         ),
-                        fadeInDuration: const Duration(milliseconds: 400),
-                        fadeOutDuration: const Duration(milliseconds: 200),
                       ),
                     ),
                   ),

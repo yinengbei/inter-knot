@@ -25,7 +25,7 @@ class CoverImage {
 
 DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
   final textVal = json['text'];
-  String rawBody = textVal is String ? textVal : '';
+  final rawBodyBuffer = StringBuffer(textVal is String ? textVal : '');
 
   if (json['blocks'] != null) {
     final blocks = json['blocks'] as List<dynamic>;
@@ -34,15 +34,16 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
       final type = block['__typename'] as String?;
       // ComponentSharedRichText -> body
       if (type == 'ComponentSharedRichText' && block['body'] != null) {
-        rawBody += '\n\n${block['body'] as String}';
+        rawBodyBuffer.write('\n\n${block['body'] as String}');
       }
       // ComponentSharedQuote -> body
       else if (type == 'ComponentSharedQuote' && block['body'] != null) {
-        rawBody += '\n\n> ${block['body'] as String}';
+        rawBodyBuffer.write('\n\n> ${block['body'] as String}');
       }
     }
   }
 
+  final rawBody = rawBodyBuffer.toString();
   final normalized = normalizeMarkdown(rawBody);
 
   // Convert Markdown to HTML
