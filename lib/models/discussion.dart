@@ -12,11 +12,13 @@ import 'package:inter_knot/models/pagination.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class CoverImage {
+  final String? id;
   final String url;
   final int? width;
   final int? height;
 
   CoverImage({
+    this.id,
     required this.url,
     this.width,
     this.height,
@@ -55,7 +57,7 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
   final (:cover, :html) = parseHtml(htmlBody);
   final List<CoverImage> parsedCovers = [];
 
-  CoverImage? normalizeCover(String? url, int? width, int? height) {
+  CoverImage? normalizeCover(String? id, String? url, int? width, int? height) {
     if (url == null || url.isEmpty) return null;
     String finalUrl = url;
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -65,23 +67,25 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
     } else {
       finalUrl = '${ApiConfig.baseUrl}/$url';
     }
-    return CoverImage(url: finalUrl, width: width, height: height);
+    return CoverImage(id: id, url: finalUrl, width: width, height: height);
   }
 
   final coverData = json['cover'];
   if (coverData is List) {
     for (final item in coverData) {
       if (item is Map<String, dynamic> && item['url'] != null) {
+        final id = item['id']?.toString();
         final width = item['width'] as int?;
         final height = item['height'] as int?;
-        final cover = normalizeCover(item['url'] as String?, width, height);
+        final cover = normalizeCover(id, item['url'] as String?, width, height);
         if (cover != null) parsedCovers.add(cover);
       }
     }
   } else if (coverData is Map<String, dynamic> && coverData['url'] != null) {
+    final id = coverData['id']?.toString();
     final width = coverData['width'] as int?;
     final height = coverData['height'] as int?;
-    final cover = normalizeCover(coverData['url'] as String?, width, height);
+    final cover = normalizeCover(id, coverData['url'] as String?, width, height);
     if (cover != null) parsedCovers.add(cover);
   }
 
@@ -97,7 +101,7 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
     final width = int.tryParse(firstImg?.attributes['width'] ?? '');
     final height = int.tryParse(firstImg?.attributes['height'] ?? '');
 
-    final firstCover = normalizeCover(src ?? cover, width, height);
+    final firstCover = normalizeCover(null, src ?? cover, width, height);
     if (firstCover != null) covers.add(firstCover);
   }
 

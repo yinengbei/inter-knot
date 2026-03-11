@@ -72,7 +72,12 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   /// 已成功上传的图片（便捷 getter）
   List<({String id, String url})> get _uploadedImages => _uploadTasks
-      .where((t) => t.status.value == UploadStatus.done)
+      .where((t) =>
+          t.status.value == UploadStatus.done &&
+          t.serverId != null &&
+          t.serverId!.isNotEmpty &&
+          t.serverUrl != null &&
+          t.serverUrl!.isNotEmpty)
       .map((t) => (id: t.serverId!, url: t.serverUrl!))
       .toList();
 
@@ -360,57 +365,75 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   void _replaceTokenWithImage(String token, String imageUrl) {
     final index = _findTokenIndex(token);
-    if (index == null) return;
+    if (index == null) {
+      debugPrint('[CreateDiscussion] Token not found: $token');
+      return;
+    }
 
-    // 先删除 token
-    _quillController.replaceText(
-      index,
-      token.length,
-      '',
-      TextSelection.collapsed(offset: index),
-    );
-
-    // 插入图片 Embed
-    // 默认设置图片大小为 160px，以匹配封面上传样式
-    _quillController.document.insert(index, quill.BlockEmbed.image(imageUrl));
-    _quillController.formatText(index, 1,
-        const quill.Attribute('width', quill.AttributeScope.ignore, '160'));
-    _quillController.formatText(index, 1,
-        const quill.Attribute('height', quill.AttributeScope.ignore, '160'));
-    _quillController.formatText(
+    try {
+      // 先删除 token
+      _quillController.replaceText(
         index,
-        1,
-        const quill.Attribute('style', quill.AttributeScope.ignore,
-            'display: inline; margin: 0 0 1em 0'));
+        token.length,
+        '',
+        TextSelection.collapsed(offset: index),
+      );
 
-    // 移动光标到图片后 (Embed 长度为 1)
-    _quillController.updateSelection(
-      TextSelection.collapsed(offset: index + 1),
-      quill.ChangeSource.local,
-    );
+      // 插入图片 Embed
+      // 默认设置图片大小为 160px，以匹配封面上传样式
+      _quillController.document.insert(index, quill.BlockEmbed.image(imageUrl));
+      _quillController.formatText(index, 1,
+          const quill.Attribute('width', quill.AttributeScope.ignore, '160'));
+      _quillController.formatText(index, 1,
+          const quill.Attribute('height', quill.AttributeScope.ignore, '160'));
+      _quillController.formatText(
+          index,
+          1,
+          const quill.Attribute('style', quill.AttributeScope.ignore,
+              'display: inline; margin: 0 0 1em 0'));
+
+      // 移动光标到图片后 (Embed 长度为 1)
+      _quillController.updateSelection(
+        TextSelection.collapsed(offset: index + 1),
+        quill.ChangeSource.local,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('[CreateDiscussion] Failed to insert image: $e');
+      debugPrint(stackTrace.toString());
+      // 如果插入图片失败，显示错误提示
+      _replaceToken(token, '[图片插入失败: $imageUrl]');
+    }
   }
 
   void _replaceToken(String token, String replacement) {
     final index = _findTokenIndex(token);
-    if (index == null) return;
+    if (index == null) {
+      debugPrint('[CreateDiscussion] Token not found for replacement: $token');
+      return;
+    }
 
-    // 先删除 token，再插入 HTML，避免转义导致的替换错位
-    _quillController.replaceText(
-      index,
-      token.length,
-      '',
-      TextSelection.collapsed(offset: index),
-    );
-    _quillController.replaceText(
-      index,
-      0,
-      replacement,
-      TextSelection.collapsed(offset: index + replacement.length),
-    );
-    _quillController.updateSelection(
-      TextSelection.collapsed(offset: index + replacement.length),
-      quill.ChangeSource.local,
-    );
+    try {
+      // 先删除 token，再插入 HTML，避免转义导致的替换错位
+      _quillController.replaceText(
+        index,
+        token.length,
+        '',
+        TextSelection.collapsed(offset: index),
+      );
+      _quillController.replaceText(
+        index,
+        0,
+        replacement,
+        TextSelection.collapsed(offset: index + replacement.length),
+      );
+      _quillController.updateSelection(
+        TextSelection.collapsed(offset: index + replacement.length),
+        quill.ChangeSource.local,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('[CreateDiscussion] Failed to replace token: $e');
+      debugPrint(stackTrace.toString());
+    }
   }
 
   int? _findTokenIndex(String token) {
@@ -562,7 +585,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           bytes: Uint8List(0),
           mimeType: 'image/jpeg',
         );
-        task.serverId = '';
+        // 使用已有的封面 ID，如果没有则设为 null（会被 _uploadedImages 过滤）
+        task.serverId = cover.id;
         task.serverUrl = cover.url;
         task.status.value = UploadStatus.done;
         task.progress.value = 100;
@@ -647,41 +671,17 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   Future<void> _submit({bool isMobile = false}) async {
     final title = titleController.text.trim();
-    final String textValue;
-    final List<dynamic>? editorState;
-    if (isMobile) {
-      textValue = _mobileBodyController.text.trim();
-      editorState = null;
-    } else {
-      final delta = _quillController.document.toDelta();
-      textValue = _quillController.document.toPlainText().trimRight();
-      editorState = delta.toJson();
-    }
-
-    // Pass all uploaded images as cover
-    // If backend supports multiple, we send list.
-    // If backend only supports single, we send first one.
-    dynamic finalCoverId;
-    if (_uploadedImages.isNotEmpty) {
-      if (_uploadedImages.length == 1) {
-        finalCoverId = _uploadedImages.first.id;
-      } else {
-        finalCoverId = _uploadedImages.map((e) => e.id).toList();
-      }
-    }
+    late final String textValue;
+    late final List<dynamic>? editorState;
 
     if (title.isEmpty) {
       showToast('标题不能为空', isError: true);
       return;
     }
+
     // Block submission while images are still uploading
     if (_isCoverUploading) {
       showToast('图片正在上传中，请稍候', isError: true);
-      return;
-    }
-    // Content check: either text or images must exist
-    if (textValue.isEmpty && _uploadedImages.isEmpty) {
-      showToast('内容不能为空', isError: true);
       return;
     }
 
@@ -690,6 +690,36 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     });
 
     try {
+      // 在 try 块内获取编辑器内容，捕获可能的 Web 环境异常
+      if (isMobile) {
+        textValue = _mobileBodyController.text.trim();
+        editorState = null;
+      } else {
+        final delta = _quillController.document.toDelta();
+        textValue = _quillController.document.toPlainText().trimRight();
+        editorState = delta.toJson();
+      }
+
+      // Content check: either text or images must exist
+      if (textValue.isEmpty && _uploadedImages.isEmpty) {
+        showToast('内容不能为空', isError: true);
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Pass all uploaded images as cover
+      // If backend supports multiple, we send list.
+      // If backend only supports single, we send first one.
+      dynamic finalCoverId;
+      if (_uploadedImages.isNotEmpty) {
+        if (_uploadedImages.length == 1) {
+          finalCoverId = _uploadedImages.first.id;
+        } else {
+          finalCoverId = _uploadedImages.map((e) => e.id).toList();
+        }
+      }
       Response<Map<String, dynamic>> res;
 
       if (widget.discussion != null) {
@@ -815,7 +845,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       showToast(widget.discussion != null ? '修改成功' : '发帖成功');
       // Refresh list
       c.refreshSearchData();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[CreateDiscussion] Submit failed: $e');
+      debugPrint(stackTrace.toString());
       showToast('发帖失败: $e', isError: true);
     } finally {
       if (mounted) {
