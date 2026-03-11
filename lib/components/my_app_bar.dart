@@ -6,11 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/my_tab.dart';
 import 'package:inter_knot/gen/assets.gen.dart';
-import 'package:inter_knot/pages/notification_page.dart';
-import 'package:inter_knot/helpers/page_transition_helper.dart';
 import 'package:inter_knot/constants/globals.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/components/avatar.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 
 class MyAppBar extends StatefulWidget {
   const MyAppBar({super.key});
@@ -21,6 +20,10 @@ class MyAppBar extends StatefulWidget {
 
 class _MyAppBarState extends State<MyAppBar> {
   Timer? _debounce;
+
+  Future<void> navigateWithSlideTransition(BuildContext context) {
+    return pushNotificationPage(context);
+  }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -327,8 +330,6 @@ class _MyAppBarState extends State<MyAppBar> {
                             // 移动端：使用平滑的页面过渡动画
                             await navigateWithSlideTransition(
                               context,
-                              const NotificationPage(),
-                              routeName: '/notifications',
                             );
                             c.refreshUnreadNotificationCount();
                           }

@@ -33,5 +33,6 @@ class CustomPageViewScrollPhysics extends ScrollPhysics {
   }
 
   @override
-  double get dragStartDistanceMotionThreshold => 20.0; // Increased threshold (default is usually null or lower)
+  double get dragStartDistanceMotionThreshold =>
+      20.0; // Increased threshold (default is usually null or lower)
 }

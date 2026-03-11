@@ -360,9 +360,29 @@ class _CoverState extends State<Cover> {
   String? _resolvedImageUrl;
   ImageStream? _imageStream;
   ImageStreamListener? _imageStreamListener;
+  String? get _currentImageUrl {
+    if (widget.discussion.coverImages.isNotEmpty) {
+      return widget.discussion.coverImages.first.url;
+    }
+    return widget.discussion.cover;
+  }
 
-  void _resolveImageAspectRatio(String imageUrl) {
-    if (_resolvedImageUrl == imageUrl) {
+  @override
+  void initState() {
+    super.initState();
+    _resolveImageAspectRatio(_currentImageUrl);
+  }
+
+  @override
+  void didUpdateWidget(covariant Cover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_currentImageUrl != _resolvedImageUrl) {
+      _resolveImageAspectRatio(_currentImageUrl);
+    }
+  }
+
+  void _resolveImageAspectRatio(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty || _resolvedImageUrl == imageUrl) {
       return;
     }
 
@@ -402,10 +422,7 @@ class _CoverState extends State<Cover> {
 
   @override
   Widget build(BuildContext context) {
-    // Prefer the high-res image from coverImages if available
-    final highResUrl = widget.discussion.coverImages.isNotEmpty
-        ? widget.discussion.coverImages.first.url
-        : widget.discussion.cover;
+    final highResUrl = _currentImageUrl;
 
     Widget image;
     if (highResUrl == null) {
@@ -414,19 +431,32 @@ class _CoverState extends State<Cover> {
         fit: BoxFit.cover,
       );
     } else {
-      _resolveImageAspectRatio(highResUrl);
-      image = NetworkImageBox(
-        url: highResUrl,
-        fit: BoxFit.cover,
-        alignment: Alignment.topCenter,
-        filterQuality: FilterQuality.high,
-        gaplessPlayback: true,
-        preferHtmlElementOnWeb: true,
-        loadingBuilder: (context, progress) {
-          return const SizedBox.shrink();
+      image = LayoutBuilder(
+        builder: (context, constraints) {
+          final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+          final displayAspectRatio = _imageAspectRatio ?? (643 / 408);
+          final cacheWidth = kIsWeb && constraints.maxWidth.isFinite
+              ? (constraints.maxWidth * devicePixelRatio).round()
+              : null;
+          final cacheHeight = cacheWidth != null
+              ? (cacheWidth / displayAspectRatio).round()
+              : null;
+
+          return NetworkImageBox(
+            url: highResUrl,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            filterQuality: kIsWeb ? FilterQuality.low : FilterQuality.medium,
+            gaplessPlayback: true,
+            memCacheWidth: cacheWidth,
+            memCacheHeight: cacheHeight,
+            preferHtmlElementOnWeb: true,
+            loadingBuilder: (context, progress) =>
+                const _DiscussionCardCoverPlaceholder(),
+            errorBuilder: (context) =>
+                Assets.images.defaultCover.image(fit: BoxFit.cover),
+          );
         },
-        errorBuilder: (context) =>
-            Assets.images.defaultCover.image(fit: BoxFit.cover),
         /* frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
           if (frame != null && _imageAspectRatio == null) {
             // 图片加载完成，获取实际尺寸
@@ -467,6 +497,43 @@ class _CoverState extends State<Cover> {
           duration: const Duration(milliseconds: 1200),
           curve: Curves.easeOutCubic,
           child: image,
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscussionCardCoverPlaceholder extends StatelessWidget {
+  const _DiscussionCardCoverPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xff2D2D2D),
+            Color(0xff1B1B1B),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(10),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: Color(0xffD7FF00),
+            ),
+          ),
         ),
       ),
     );

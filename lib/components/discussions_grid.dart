@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/discussion_card.dart';
 import 'package:inter_knot/controllers/data.dart';
-import 'package:inter_knot/helpers/dialog_helper.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 import 'package:inter_knot/helpers/smooth_scroll.dart';
 import 'package:inter_knot/models/discussion.dart';
 import 'package:inter_knot/models/h_data.dart';
-import 'package:inter_knot/pages/discussion_page.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
 
@@ -73,6 +73,7 @@ class _DiscussionGridState extends State<DiscussionGrid>
     with AutomaticKeepAliveClientMixin {
   late final ScrollController scrollController;
   bool _isLocalController = false;
+  String _lastPrecachingSignature = '';
 
   Widget _buildInsertedPostAnimation(String id, Widget child) {
     if (id.isEmpty) return child;
@@ -115,15 +116,11 @@ class _DiscussionGridState extends State<DiscussionGrid>
       discussion: discussion,
       hData: item,
       onTap: () async {
-        final result = await showZZZDialog(
-          context: context,
-          pageBuilder: (context) {
-            return DiscussionPage(
-              discussion: discussion,
-              hData: item,
-              reorderHistoryOnOpen: widget.reorderHistoryOnOpen,
-            );
-          },
+        final result = await showDiscussionPageDialog(
+          context,
+          discussion: discussion,
+          hData: item,
+          reorderHistoryOnOpen: widget.reorderHistoryOnOpen,
         );
 
         if (result == true) {
@@ -183,6 +180,7 @@ class _DiscussionGridState extends State<DiscussionGrid>
     super.build(context);
     final list = widget.list;
     final items = list.toList(growable: false);
+    _scheduleWebCoverPrecaching(items);
     final fetchData = widget.fetchData;
     final hasNextPage = widget.hasNextPage;
 
@@ -381,5 +379,36 @@ class _DiscussionGridState extends State<DiscussionGrid>
         return child;
       },
     );
+  }
+
+  void _scheduleWebCoverPrecaching(List<HDataModel> items) {
+    if (!kIsWeb || items.isEmpty) return;
+
+    final visibleItems = items.take(6).toList(growable: false);
+    final signature = visibleItems.map((item) => item.id).join('|');
+    if (signature.isEmpty || signature == _lastPrecachingSignature) {
+      return;
+    }
+
+    _lastPrecachingSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      for (final item in visibleItems) {
+        final discussion = item.cachedDiscussion;
+        if (discussion == null) continue;
+
+        final coverUrl = discussion.coverImages.isNotEmpty
+            ? discussion.coverImages.first.url
+            : discussion.cover;
+        if (coverUrl == null || coverUrl.trim().isEmpty) continue;
+
+        try {
+          await precacheImage(NetworkImage(coverUrl.trim()), context);
+        } catch (_) {
+          // Best-effort warm up for Web image cache.
+        }
+      }
+    });
   }
 }

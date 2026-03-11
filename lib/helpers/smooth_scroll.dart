@@ -250,11 +250,7 @@ class _SmoothScrollState extends State<SmoothScroll>
     with SingleTickerProviderStateMixin {
   double _targetPosition = 0;
   late Ticker _ticker;
-  // Use a physics-like simulation: position += (target - position) * friction
-  // A value around 0.1-0.2 provides a nice browser-like "ease-out" feel.
-  // Higher = snappier, Lower = floatier.
   static const double _friction = 0.3;
-  // Threshold to stop the animation
   static const double _threshold = 0.5;
 
   @override
@@ -283,20 +279,15 @@ class _SmoothScrollState extends State<SmoothScroll>
     final double currentPos = widget.controller.offset;
     final double diff = _targetPosition - currentPos;
 
-    // If close enough, snap and stop
     if (diff.abs() < _threshold) {
       widget.controller.jumpTo(_targetPosition);
       _ticker.stop();
       return;
     }
 
-    // Move towards target
-    // We can use a simple proportional step for exponential smoothing
     final double move = diff * _friction;
-
     double newPos = currentPos + move;
 
-    // Safety clamp
     final double maxPos = widget.controller.position.maxScrollExtent;
     final double minPos = widget.controller.position.minScrollExtent;
 
@@ -312,8 +303,6 @@ class _SmoothScrollState extends State<SmoothScroll>
       if (!widget.controller.hasClients) return;
 
       final double currentPos = widget.controller.offset;
-
-      // If we are currently stopped, sync target to current
       if (!_ticker.isActive) {
         _targetPosition = currentPos;
       }
@@ -321,12 +310,9 @@ class _SmoothScrollState extends State<SmoothScroll>
       final double maxPos = widget.controller.position.maxScrollExtent;
       final double minPos = widget.controller.position.minScrollExtent;
 
-      // Accumulate delta
       final double delta = event.scrollDelta.dy * widget.scrollSpeed;
-
       _targetPosition += delta;
 
-      // Clamp target immediately
       if (_targetPosition < minPos) _targetPosition = minPos;
       if (_targetPosition > maxPos) _targetPosition = maxPos;
 

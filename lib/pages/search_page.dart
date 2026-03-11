@@ -3,8 +3,8 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:get/get.dart';
 import 'package:inter_knot/components/discussions_grid.dart';
 import 'package:inter_knot/controllers/data.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 import 'package:inter_knot/helpers/throttle.dart';
-import 'package:inter_knot/pages/create_discussion_page.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -208,7 +208,7 @@ class _SearchPageState extends State<SearchPage>
                   width: 188,
                   onTap: () async {
                     if (await c.ensureLogin()) {
-                      CreateDiscussionPage.show(context);
+                      await showCreateDiscussionPage(context);
                     }
                   },
                 ),

@@ -4,11 +4,10 @@ import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/avatar.dart';
 import 'package:inter_knot/components/close_svg_button.dart';
 import 'package:inter_knot/components/discussions_grid.dart';
-import 'package:inter_knot/helpers/dialog_helper.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 import 'package:inter_knot/helpers/logger.dart';
 import 'package:inter_knot/helpers/time_formatter.dart';
 import 'package:inter_knot/models/h_data.dart';
-import 'package:inter_knot/pages/discussion_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -445,13 +444,11 @@ class _ProfilePageState extends State<ProfilePage>
                 createdAt: createdDate,
                 isPinned: false,
               );
-              await showZZZDialog(
-                context: context,
-                pageBuilder: (context) => DiscussionPage(
-                  discussion: discussion,
-                  hData: hData,
-                  reorderHistoryOnOpen: false,
-                ),
+              await showDiscussionPageDialog(
+                context,
+                discussion: discussion,
+                hData: hData,
+                reorderHistoryOnOpen: false,
               );
             } catch (e) {
               logger.e('Failed to load discussion', error: e);

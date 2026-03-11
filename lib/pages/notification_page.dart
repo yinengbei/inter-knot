@@ -3,12 +3,11 @@ import 'package:get/get.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/notification_card.dart';
 import 'package:inter_knot/controllers/data.dart';
-import 'package:inter_knot/helpers/dialog_helper.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/models/h_data.dart';
 import 'package:inter_knot/models/notification.dart';
 import 'package:inter_knot/models/pagination.dart';
-import 'package:inter_knot/pages/discussion_page.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -244,14 +243,10 @@ class _NotificationPageState extends State<NotificationPage>
 
         // 使用和主页一样的弹窗方式展示文章详情
         if (!mounted) return;
-        await showZZZDialog(
-          context: context,
-          pageBuilder: (context) {
-            return DiscussionPage(
-              discussion: discussion,
-              hData: hData,
-            );
-          },
+        await showDiscussionPageDialog(
+          context,
+          discussion: discussion,
+          hData: hData,
         );
       } catch (e) {
         debugPrint('Load article error: $e');

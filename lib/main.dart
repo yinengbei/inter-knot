@@ -13,11 +13,13 @@ import 'package:inter_knot/components/update_dialog.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/app_scroll_behavior.dart';
 import 'package:inter_knot/helpers/box.dart';
+import 'package:inter_knot/helpers/deferred_loader.dart';
+import 'package:inter_knot/helpers/deferred_routes.dart';
 import 'package:inter_knot/helpers/toast.dart';
-import 'package:inter_knot/pages/create_discussion_page.dart';
-import 'package:inter_knot/pages/home_page.dart';
-import 'package:inter_knot/pages/notification_page.dart';
 import 'package:inter_knot/pages/search_page.dart';
+import 'package:inter_knot/pages/home_page.dart' deferred as home_page;
+import 'package:inter_knot/pages/notification_page.dart'
+    deferred as notification_page;
 import 'package:inter_knot/services/captcha_service.dart';
 import 'package:inter_knot/services/update_service.dart';
 
@@ -31,10 +33,14 @@ Future<void> main() async {
   Get.put(Api());
   await Get.putAsync(() => CaptchaService().init());
   Get.put(Controller());
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
   runApp(const MyApp());
 }
 
@@ -179,16 +185,21 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               const MyAppBar(),
               Expanded(
-                child: PageView(
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Disable swipe gesture
-                  controller: controller.pageController,
-                  onPageChanged: (index) =>
-                      controller.selectedIndex.value = index,
-                  children: const [
-                    SearchPage(),
-                    HomePage(),
-                  ],
+                child: Obx(
+                  () => PageView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    controller: controller.pageController,
+                    onPageChanged: (index) =>
+                        controller.selectedIndex.value = index,
+                    children: [
+                      const SearchPage(),
+                      DeferredPageHost(
+                        shouldLoad: controller.selectedIndex.value == 1,
+                        loadLibrary: home_page.loadLibrary,
+                        pageBuilder: (context) => home_page.HomePage(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -253,8 +264,17 @@ class _MyHomePageState extends State<MyHomePage> {
                 duration: Duration.zero,
                 children: [
                   const SearchPage(),
-                  const HomePage(),
-                  NotificationPage(),
+                  DeferredPageHost(
+                    shouldLoad: controller.selectedIndex.value == 1,
+                    loadLibrary: home_page.loadLibrary,
+                    pageBuilder: (context) => home_page.HomePage(),
+                  ),
+                  DeferredPageHost(
+                    shouldLoad: controller.selectedIndex.value == 2,
+                    loadLibrary: notification_page.loadLibrary,
+                    pageBuilder: (context) =>
+                        notification_page.NotificationPage(),
+                  ),
                 ],
               ),
             ),
@@ -268,7 +288,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return _AnimatedCreateButton(
       onTap: () async {
         if (await controller.ensureLogin()) {
-          CreateDiscussionPage.show(context);
+          await showCreateDiscussionPage(context);
         }
       },
     );
