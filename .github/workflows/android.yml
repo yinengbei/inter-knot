@@ -33,11 +33,13 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
           echo -e "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}\nkeyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}\nkeyAlias=${{ secrets.ANDROID_KEY_ALIAS }}\nstoreFile=upload-keystore.jks" > android/key.properties
 
-      - run: flutter build apk
+      - run: flutter pub get
 
-      - run: mv build/app/outputs/flutter-apk/app-release.apk inter_knot_android.apk
+      - run: flutter build apk --release --target-platform android-arm64
+
+      - run: mv build/app/outputs/flutter-apk/app-release.apk inter_knot_android_arm64.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: inter_knot_apk
-          path: inter_knot_android.apk
+          path: inter_knot_android_arm64.apk
