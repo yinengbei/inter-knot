@@ -6,13 +6,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_skill/flutter_skill.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:inter_knot/api/api.dart';
 import 'package:inter_knot/components/fade_indexed_stack.dart';
 import 'package:inter_knot/components/my_app_bar.dart';
 import 'package:inter_knot/components/update_dialog.dart';
 import 'package:inter_knot/controllers/data.dart';
 import 'package:inter_knot/helpers/app_scroll_behavior.dart';
+import 'package:inter_knot/helpers/box.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/pages/create_discussion_page.dart';
 import 'package:inter_knot/pages/home_page.dart';
@@ -26,7 +26,7 @@ Future<void> main() async {
   if (kDebugMode) {
     FlutterSkillBinding.ensureInitialized();
   }
-  await GetStorage.init();
+  await box.init();
   Get.put(AuthApi());
   Get.put(Api());
   await Get.putAsync(() => CaptchaService().init());
@@ -127,7 +127,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!kIsWeb && Platform.isAndroid) {
       // Delay to avoid blocking app startup
       await Future.delayed(const Duration(seconds: 2));
-      
+
       try {
         final updateInfo = await UpdateService.checkForUpdate();
         if (updateInfo != null && mounted) {
@@ -152,17 +152,17 @@ class _MyHomePageState extends State<MyHomePage> {
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          
+
           // 如果在我的页面，跳转到首页
           if (controller.selectedIndex.value == 1) {
             controller.animateToPage(0, animate: false);
             return;
           }
-          
+
           // 如果在首页，显示"再按一次退出"提示
           if (controller.selectedIndex.value == 0) {
             final now = DateTime.now();
-            if (_lastPressedAt == null || 
+            if (_lastPressedAt == null ||
                 now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
               _lastPressedAt = now;
               showToast('再按一次退出绳网', duration: const Duration(seconds: 2));
@@ -173,68 +173,70 @@ class _MyHomePageState extends State<MyHomePage> {
           }
         },
         child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        backgroundColor: const Color(0xff121212),
-        body: Column(
-          children: [
-            const MyAppBar(),
-            Expanded(
-              child: PageView(
-                physics: const NeverScrollableScrollPhysics(), // Disable swipe gesture
-                controller: controller.pageController,
-                onPageChanged: (index) =>
-                    controller.selectedIndex.value = index,
-                children: const [
-                  SearchPage(),
-                  HomePage(),
+          resizeToAvoidBottomInset: false,
+          backgroundColor: const Color(0xff121212),
+          body: Column(
+            children: [
+              const MyAppBar(),
+              Expanded(
+                child: PageView(
+                  physics:
+                      const NeverScrollableScrollPhysics(), // Disable swipe gesture
+                  controller: controller.pageController,
+                  onPageChanged: (index) =>
+                      controller.selectedIndex.value = index,
+                  children: const [
+                    SearchPage(),
+                    HomePage(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: Obx(
+            () => Container(
+              height: 58,
+              decoration: const BoxDecoration(
+                color: Color(0xff1A1A1A),
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.white12,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _BottomNavItem(
+                    isSelected: controller.selectedIndex.value == 0,
+                    icon: Icons.explore_outlined,
+                    activeIcon: Icons.explore,
+                    label: '推送',
+                    onTap: () => controller.animateToPage(0, animate: false),
+                    onDoubleTap: () {
+                      // Double tap to refresh posts
+                      if (controller.selectedIndex.value == 0) {
+                        controller.refreshSearchData();
+                        showToast('正在刷新帖子...',
+                            duration: const Duration(seconds: 1));
+                      }
+                    },
+                  ),
+                  Center(
+                    child: _buildCreateButton(context),
+                  ),
+                  _BottomNavItem(
+                    isSelected: controller.selectedIndex.value == 1,
+                    icon: Icons.person_outline,
+                    activeIcon: Icons.person,
+                    label: '我的',
+                    onTap: () => controller.animateToPage(1, animate: false),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-        bottomNavigationBar: Obx(
-          () => Container(
-            height: 58,
-            decoration: const BoxDecoration(
-              color: Color(0xff1A1A1A),
-              border: Border(
-                top: BorderSide(
-                  color: Colors.white12,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _BottomNavItem(
-                  isSelected: controller.selectedIndex.value == 0,
-                  icon: Icons.explore_outlined,
-                  activeIcon: Icons.explore,
-                  label: '推送',
-                  onTap: () => controller.animateToPage(0, animate: false),
-                  onDoubleTap: () {
-                    // Double tap to refresh posts
-                    if (controller.selectedIndex.value == 0) {
-                      controller.refreshSearchData();
-                      showToast('正在刷新帖子...', duration: const Duration(seconds: 1));
-                    }
-                  },
-                ),
-                Center(
-                  child: _buildCreateButton(context),
-                ),
-                _BottomNavItem(
-                  isSelected: controller.selectedIndex.value == 1,
-                  icon: Icons.person_outline,
-                  activeIcon: Icons.person,
-                  label: '我的',
-                  onTap: () => controller.animateToPage(1, animate: false),
-                ),
-              ],
-            ),
           ),
-        ),
         ),
       );
     }
@@ -299,8 +301,8 @@ class _BottomNavItemState extends State<_BottomNavItem> {
 
   void _handleTap() {
     final now = DateTime.now();
-    
-    if (_lastTapTime != null && 
+
+    if (_lastTapTime != null &&
         now.difference(_lastTapTime!) < const Duration(milliseconds: 300)) {
       // Double tap detected
       if (widget.onDoubleTap != null) {

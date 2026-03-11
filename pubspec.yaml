@@ -22,7 +22,6 @@ dependencies:
   flutter_widget_from_html: ^0.17.1
   gal: ^2.3.2
   get: ^4.6.6
-  get_storage: ^2.1.1
   html: ^0.15.4
   http: ^1.2.0
   flutter_image_compress: ^2.4.0

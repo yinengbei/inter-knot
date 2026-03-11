@@ -33,7 +33,7 @@
 
   * [flutter_quill](https://pub.dev/packages/flutter_quill)
   * [markdown](https://pub.dev/packages/markdown)
-* **本地存储**: [get_storage](https://pub.dev/packages/get_storage)
+* **本地存储**: [shared_preferences](https://pub.dev/packages/shared_preferences)
 
 ### 后端
 
