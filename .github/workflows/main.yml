@@ -42,7 +42,7 @@ jobs:
           path: inter_knot_windows_x64_boxed.exe
 
   build_android:
-    name: Android Client
+    name: Android Client (arm64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +51,7 @@ jobs:
         with:
           distribution: zulu
           java-version: "17"
+          cache: gradle
 
       - uses: subosito/flutter-action@v2
         with:
@@ -60,14 +61,16 @@ jobs:
       - run: echo -e "storePassword=${{ secrets.PWD }}\nkeyPassword=${{ secrets.PWD }}\nkeyAlias=upload\nstoreFile=../../upload-keystore.jks" > android/key.properties
       - run: dart gen_secrets.dart
 
-      - run: flutter build apk
+      - name: Build arm64 release APK
+        run: flutter build apk --release --target-platform android-arm64
 
-      - run: mv build/app/outputs/flutter-apk/app-release.apk inter_knot_android.apk
+      - name: Rename artifact
+        run: mv build/app/outputs/flutter-apk/app-release.apk inter_knot_android_arm64.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: inter_knot_apk
-          path: inter_knot_android.apk
+          name: inter_knot_apk_arm64
+          path: inter_knot_android_arm64.apk
 
   build_iOS:
     name: iOS Client
@@ -208,8 +211,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: inter_knot_apk
-          path: inter_knot_apk
+          name: inter_knot_apk_arm64
+          path: inter_knot_apk_arm64
 
       - uses: actions/download-artifact@v4
         with:
@@ -232,7 +235,7 @@ jobs:
           body_path: release-content.md
           files: |
             inter_knot_windows_x64_boxed/inter_knot_windows_x64_boxed.exe
-            inter_knot_apk/inter_knot_android.apk
+            inter_knot_apk_arm64/inter_knot_android_arm64.apk
             inter_knot_linux/inter_knot_linux.zip
             inter_knot_macos/inter_knot_macos.dmg
             inter_knot_ios/inter_knot_ios.ipa
