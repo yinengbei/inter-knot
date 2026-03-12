@@ -84,6 +84,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   bool _hasUnsavedChanges = false;
   bool _suppressChangeTracking = false;
   bool _isDesktopEditorActive = true;
+  late final bool _draftFeaturesEnabled;
   String? _documentId;
   String _lastSavedSnapshot = '';
   List<dynamic>? _persistedEditorState;
@@ -142,6 +143,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       (_currentBodyText.trim().isNotEmpty || _uploadedImages.isNotEmpty);
 
   bool get _supportsDeleteCurrentDraft =>
+      _draftFeaturesEnabled &&
       _documentId != null &&
       _documentId!.isNotEmpty &&
       (_activeDiscussion?.hasPublishedVersion != true);
@@ -200,12 +202,16 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   void _scheduleAutoSave() {
     _autoSaveDebounce?.cancel();
-    _autoSaveDebounce = Timer(const Duration(milliseconds: 1200), () {
+    _autoSaveDebounce = Timer(const Duration(milliseconds: 600), () {
       unawaited(_saveDraft());
     });
   }
 
   void _markDraftDirty({bool scheduleSave = true}) {
+    if (!_draftFeaturesEnabled) {
+      return;
+    }
+
     if (_suppressChangeTracking) {
       return;
     }
@@ -306,6 +312,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _ensureDraftEntriesLoaded() async {
+    if (!_draftFeaturesEnabled) {
+      return;
+    }
     if (_draftListInitialized || _isDraftListLoading) {
       return;
     }
@@ -313,6 +322,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _refreshDraftEntries({bool silent = false}) async {
+    if (!_draftFeaturesEnabled) {
+      return;
+    }
     _draftEntries.clear();
     _draftEndCursor = null;
     _draftHasNextPage.value = true;
@@ -321,6 +333,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _loadMoreDraftEntries({bool silent = false}) async {
+    if (!_draftFeaturesEnabled) {
+      return;
+    }
     if (_isDraftListLoading || !_draftHasNextPage.value) {
       return;
     }
@@ -356,6 +371,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   void _selectDesktopPage(int index) {
+    if (!_draftFeaturesEnabled && index > 1) {
+      return;
+    }
     if (index == 2) {
       unawaited(_ensureDraftEntriesLoaded());
     }
@@ -368,7 +386,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     DiscussionModel _discussion,
   ) async {
     if (_documentId == item.id) {
-      _pageController.jumpToPage(0);
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
       return;
     }
 
@@ -392,7 +412,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     try {
       final nextDiscussion = await api.getMyDraftDetail(item.id);
       _applyDiscussionToEditor(nextDiscussion);
-      if (mounted) {
+      if (mounted && _pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
     } catch (e) {
@@ -406,6 +426,55 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         });
       }
     }
+  }
+
+  Future<void> _showMobileDraftsPage() async {
+    if (!_draftFeaturesEnabled || !mounted) {
+      return;
+    }
+
+    unawaited(_ensureDraftEntriesLoaded());
+
+    await showZZZDialog<void>(
+      context: context,
+      showBackgroundEffect: false,
+      pageBuilder: (dialogContext) {
+        return Scaffold(
+          backgroundColor: const Color(0xff121212),
+          body: SafeArea(
+            child: Column(
+              children: [
+                CreateDiscussionHeader(
+                  controller: c,
+                  title: '草稿箱',
+                  onClose: () => Navigator.of(dialogContext).pop(),
+                ),
+                Expanded(
+                  child: Obx(
+                    () => CreateDiscussionDraftsPage(
+                      isLoggedIn: c.isLogin.value,
+                      isLoading: _isDraftListLoading,
+                      drafts: _draftEntries,
+                      hasNextPage: _draftHasNextPage.value,
+                      onFetchMore: _fetchMoreDraftEntries,
+                      onOpenDraft: (context, item, discussion) async {
+                        final previousDocumentId = _documentId;
+                        await _openDraftFromList(context, item, discussion);
+                        final openedSelectedDraft = _documentId == item.id ||
+                            previousDocumentId == item.id;
+                        if (openedSelectedDraft && dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   /// 设置粘贴事件监听
@@ -823,6 +892,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _saveDraft({bool force = false}) async {
+    if (!_draftFeaturesEnabled && !force) {
+      return;
+    }
+
     final inFlight = _saveDraftFuture;
     if (inFlight != null) {
       await inFlight;
@@ -843,6 +916,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _performSaveDraft({bool force = false}) async {
+    if (!_draftFeaturesEnabled && !force) {
+      return;
+    }
+
     if (_isInitializingDraft) {
       return;
     }
@@ -863,7 +940,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       throw Exception('无法关联作者，请重新登录后再试');
     }
 
-    if (mounted) {
+    if (_draftFeaturesEnabled && mounted) {
       setState(() {
         _isSavingDraft = true;
       });
@@ -918,7 +995,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
         HDataModel.upsertCachedDiscussion(_activeDiscussion!);
       }
 
-      if (_selectedIndex == 2 || previousDocumentId == null) {
+      if (_draftFeaturesEnabled &&
+          (_selectedIndex == 2 || previousDocumentId == null)) {
         unawaited(_refreshDraftEntries(silent: true));
       }
 
@@ -929,7 +1007,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       _hasUnsavedChanges = true;
       rethrow;
     } finally {
-      if (mounted) {
+      if (_draftFeaturesEnabled && mounted) {
         setState(() {
           _isSavingDraft = false;
         });
@@ -990,6 +1068,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   }
 
   Future<void> _loadDraftIfNeeded() async {
+    if (!_draftFeaturesEnabled) {
+      return;
+    }
+
     final shouldLoadDraft =
         widget.documentId != null && widget.documentId!.isNotEmpty
             ? widget.discussion == null || widget.discussion!.isEditableDraft
@@ -1035,7 +1117,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   Future<void> _handleClose() async {
     _autoSaveDebounce?.cancel();
 
-    if (_hasUnsavedChanges && (_documentId != null || _hasAnyDraftContent)) {
+    if (_draftFeaturesEnabled &&
+        _hasUnsavedChanges &&
+        (_documentId != null || _hasAnyDraftContent)) {
       try {
         await _saveDraft(force: true);
       } catch (_) {}
@@ -1119,6 +1203,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   @override
   void initState() {
     super.initState();
+    _draftFeaturesEnabled =
+        widget.discussion == null || widget.discussion!.isEditableDraft;
     _activeDiscussion = widget.discussion;
     _documentId = widget.documentId ?? _activeDiscussion?.id;
     titleController.addListener(_handleTitleChanged);
@@ -1235,6 +1321,8 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           _compressBeforeUpload = value;
         });
       },
+      showDeleteDraft: _supportsDeleteCurrentDraft,
+      onDeleteDraft: _supportsDeleteCurrentDraft ? _deleteCurrentDraft : null,
     );
   }
 
@@ -1278,39 +1366,41 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       ),
     );
 
+    final contentPages = <Widget>[
+      CreateDiscussionEditorPage(
+        titleController: titleController,
+        quillController: _quillController,
+        onPickAndUploadImage: _pickAndUploadImage,
+      ),
+      CreateDiscussionCoverPage(
+        uploadTasks: _uploadTasks,
+        isDragging: _isDragging,
+        onPickImages: _pickImages,
+        onRemoveImageAt: _removeUploadTask,
+        onRetryAt: _retryUploadTask,
+        onDroppedImages: _handleDroppedImages,
+        onDraggingChanged: (isDragging) {
+          setState(() {
+            _isDragging = isDragging;
+          });
+        },
+      ),
+      if (_draftFeaturesEnabled) draftsPage,
+    ];
+
     final content = PageView(
       scrollDirection: isDesktop ? Axis.vertical : Axis.horizontal,
       physics: const NeverScrollableScrollPhysics(),
       controller: _pageController,
       onPageChanged: (index) {
-        if (index == 2) {
+        if (_draftFeaturesEnabled && index == 2) {
           unawaited(_ensureDraftEntriesLoaded());
         }
         setState(() {
           _selectedIndex = index;
         });
       },
-      children: [
-        CreateDiscussionEditorPage(
-          titleController: titleController,
-          quillController: _quillController,
-          onPickAndUploadImage: _pickAndUploadImage,
-        ),
-        CreateDiscussionCoverPage(
-          uploadTasks: _uploadTasks,
-          isDragging: _isDragging,
-          onPickImages: _pickImages,
-          onRemoveImageAt: _removeUploadTask,
-          onRetryAt: _retryUploadTask,
-          onDroppedImages: _handleDroppedImages,
-          onDraggingChanged: (isDragging) {
-            setState(() {
-              _isDragging = isDragging;
-            });
-          },
-        ),
-        draftsPage,
-      ],
+      children: contentPages,
     );
 
     final scaffold = Scaffold(
@@ -1327,15 +1417,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                   isSavingDraft: _isSavingDraft,
                   isPublishing: _isPublishing,
                   submitEnabled: _canPublish,
-                  onPickImage: _pickImages,
+                  onOpenDrafts: _showMobileDraftsPage,
                   onSubmit: () => _publish(isMobile: true),
-                  imageCount: _uploadTasks.length,
-                  uploadingCount: _uploadTasks
-                      .where((t) =>
-                          t.status.value == UploadStatus.uploading ||
-                          t.status.value == UploadStatus.compressing ||
-                          t.status.value == UploadStatus.pending)
-                      .length,
+                  draftCount: _draftEntries.length,
+                  showDraftButton: _draftFeaturesEnabled,
                 ),
               ),
             ),
@@ -1356,6 +1441,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                         CreateDiscussionDesktopSidebar(
                           selectedIndex: _selectedIndex,
                           onSelectPage: _selectDesktopPage,
+                          showDrafts: _draftFeaturesEnabled,
                         ),
                         Expanded(
                           flex: 9,

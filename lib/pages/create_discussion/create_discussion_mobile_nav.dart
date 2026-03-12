@@ -6,19 +6,19 @@ class CreateDiscussionMobileNav extends StatelessWidget {
     required this.isSavingDraft,
     required this.isPublishing,
     required this.submitEnabled,
-    required this.onPickImage,
+    required this.onOpenDrafts,
     required this.onSubmit,
-    this.imageCount = 0,
-    this.uploadingCount = 0,
+    this.draftCount = 0,
+    this.showDraftButton = true,
   });
 
   final bool isSavingDraft;
   final bool isPublishing;
   final bool submitEnabled;
-  final VoidCallback onPickImage;
+  final VoidCallback onOpenDrafts;
   final VoidCallback onSubmit;
-  final int imageCount;
-  final int uploadingCount;
+  final int draftCount;
+  final bool showDraftButton;
 
   @override
   Widget build(BuildContext context) {
@@ -37,16 +37,20 @@ class CreateDiscussionMobileNav extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _ToolButton(
-            icon: Icons.image_outlined,
-            label: imageCount > 0 ? '$imageCount' : null,
-            sublabel:
-                uploadingCount > 0 ? '\u4e0a\u4f20\u4e2d$uploadingCount' : null,
-            onTap: onPickImage,
-          ),
+          if (showDraftButton)
+            _ToolButton(
+              icon: Icons.drafts_outlined,
+              sublabel: draftCount > 0 ? '$draftCount' : null,
+              onTap: onOpenDrafts,
+            ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+              padding: EdgeInsets.fromLTRB(
+                showDraftButton ? 8 : 12,
+                8,
+                12,
+                8,
+              ),
               child: GestureDetector(
                 onTap: submitEnabled && !isBusy ? onSubmit : null,
                 child: Container(
@@ -101,12 +105,10 @@ class _ToolButton extends StatelessWidget {
   const _ToolButton({
     required this.icon,
     required this.onTap,
-    this.label,
     this.sublabel,
   });
 
   final IconData icon;
-  final String? label;
   final String? sublabel;
   final VoidCallback onTap;
 
@@ -121,17 +123,6 @@ class _ToolButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: const Color(0xffA0A0A0), size: 24),
-            if (label != null) ...[
-              const SizedBox(width: 4),
-              Text(
-                label!,
-                style: const TextStyle(
-                  color: Color(0xffD7FF00),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
             if (sublabel != null) ...[
               const SizedBox(width: 6),
               Text(

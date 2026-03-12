@@ -5,10 +5,12 @@ class CreateDiscussionDesktopSidebar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onSelectPage,
+    this.showDrafts = true,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelectPage;
+  final bool showDrafts;
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +47,13 @@ class CreateDiscussionDesktopSidebar extends StatelessWidget {
                 selected: selectedIndex == 1,
                 onTap: () => onSelectPage(1),
               ),
-              ListTile(
-                leading: const Icon(Icons.drafts_outlined),
-                title: const Text('草稿'),
-                selected: selectedIndex == 2,
-                onTap: () => onSelectPage(2),
-              ),
+              if (showDrafts)
+                ListTile(
+                  leading: const Icon(Icons.drafts_outlined),
+                  title: const Text('草稿'),
+                  selected: selectedIndex == 2,
+                  onTap: () => onSelectPage(2),
+                ),
             ],
           ),
         ),
