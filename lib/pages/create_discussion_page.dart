@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -31,16 +32,24 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:inter_knot/services/captcha_service.dart';
 
 class CreateDiscussionPage extends StatefulWidget {
-  const CreateDiscussionPage({super.key, this.discussion});
+  const CreateDiscussionPage({
+    super.key,
+    this.discussion,
+    this.documentId,
+  });
 
   final DiscussionModel? discussion;
+  final String? documentId;
 
   static Future<bool?> show(BuildContext context,
-      {DiscussionModel? discussion}) {
+      {DiscussionModel? discussion, String? documentId}) {
     return showZZZDialog<bool>(
       context: context,
       pageBuilder: (context) {
-        return CreateDiscussionPage(discussion: discussion);
+        return CreateDiscussionPage(
+          discussion: discussion,
+          documentId: documentId,
+        );
       },
     );
   }
@@ -63,6 +72,19 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   final RxList<UploadTask> _uploadTasks = <UploadTask>[].obs;
   bool _compressBeforeUpload = true;
   bool _isDragging = false; // 拖拽状态
+  Timer? _autoSaveDebounce;
+  Future<void>? _saveDraftFuture;
+  bool _isInitializingDraft = false;
+  bool _isSavingDraft = false;
+  bool _isPublishing = false;
+  bool _hasUnsavedChanges = false;
+  bool _suppressChangeTracking = false;
+  bool _isDesktopEditorActive = true;
+  String? _documentId;
+  String _lastSavedSnapshot = '';
+  DateTime? _lastSavedAt;
+  List<dynamic>? _persistedEditorState;
+  String _persistedBodyText = '';
 
   // 压缩是 CPU 密集型任务：限制并发，避免 UI 卡顿（Web 单线程更明显）
   final Queue<Completer<void>> _compressionWaiters = Queue<Completer<void>>();
@@ -72,7 +94,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   /// 已成功上传的图片（便捷 getter）
   List<({String id, String url})> get _uploadedImages => _uploadTasks
-      .where((t) => t.status.value == UploadStatus.done)
+      .where((t) =>
+          t.status.value == UploadStatus.done &&
+          t.serverId != null &&
+          t.serverId!.isNotEmpty &&
+          t.serverUrl != null)
       .map((t) => (id: t.serverId!, url: t.serverUrl!))
       .toList();
 
@@ -82,11 +108,147 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       t.status.value == UploadStatus.compressing ||
       t.status.value == UploadStatus.pending);
 
-  bool isLoading = false;
   int _selectedIndex = 0;
 
   final c = Get.find<Controller>();
   late final api = Get.find<Api>();
+
+  bool get _hasAnyDraftContent {
+    final title = titleController.text.trim();
+    final body = _currentBodyText.trim();
+    return title.isNotEmpty || body.isNotEmpty || _uploadedImages.isNotEmpty;
+  }
+
+  bool get _canPublish =>
+      !_isInitializingDraft &&
+      !_isPublishing &&
+      !_isCoverUploading &&
+      titleController.text.trim().isNotEmpty &&
+      (_currentBodyText.trim().isNotEmpty || _uploadedImages.isNotEmpty);
+
+  String? get _editorStatusLabel {
+    if (_isPublishing) {
+      return '发布中...';
+    }
+    if (_isSavingDraft) {
+      return '保存中...';
+    }
+    if (_lastSavedAt != null) {
+      return '已自动保存';
+    }
+    return null;
+  }
+
+  Color get _editorStatusColor {
+    if (_isPublishing) {
+      return const Color(0xffFBC02D);
+    }
+    return const Color(0xffD7FF00);
+  }
+
+  String get _currentBodyText {
+    if (_isDesktopEditorActive) {
+      return _quillController.document.toPlainText().trimRight();
+    }
+    return _mobileBodyController.text.trim();
+  }
+
+  List<dynamic>? get _currentEditorState {
+    if (_isDesktopEditorActive) {
+      return _quillController.document.toDelta().toJson();
+    }
+
+    final mobileText = _mobileBodyController.text.trim();
+    if (mobileText == _persistedBodyText && _persistedEditorState != null) {
+      return List<dynamic>.from(_persistedEditorState!);
+    }
+    return null;
+  }
+
+  dynamic get _currentCoverPayload {
+    if (_uploadedImages.isEmpty) {
+      return <String>[];
+    }
+    if (_uploadedImages.length == 1) {
+      return _uploadedImages.first.id;
+    }
+    return _uploadedImages.map((e) => e.id).toList();
+  }
+
+  Map<String, dynamic> _buildDraftPayload() {
+    return <String, dynamic>{
+      'title': titleController.text.trim(),
+      'text': _currentBodyText,
+      'editorState': _currentEditorState,
+      'cover': _currentCoverPayload,
+    };
+  }
+
+  String _draftSnapshot(Map<String, dynamic> payload) {
+    return jsonEncode(payload);
+  }
+
+  void _syncSavedSnapshot({DateTime? savedAt}) {
+    final payload = _buildDraftPayload();
+    _lastSavedSnapshot = _draftSnapshot(payload);
+    _persistedBodyText = payload['text']?.toString() ?? '';
+    final editorState = payload['editorState'];
+    _persistedEditorState =
+        editorState is List ? List<dynamic>.from(editorState) : null;
+    _hasUnsavedChanges = false;
+    _lastSavedAt = savedAt ?? DateTime.now();
+  }
+
+  void _scheduleAutoSave() {
+    _autoSaveDebounce?.cancel();
+    _autoSaveDebounce = Timer(const Duration(milliseconds: 1200), () {
+      unawaited(_saveDraft());
+    });
+  }
+
+  void _markDraftDirty({bool scheduleSave = true}) {
+    if (_suppressChangeTracking) {
+      return;
+    }
+
+    _hasUnsavedChanges = true;
+
+    if (_isInitializingDraft) {
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+
+    if (_documentId == null && !_hasAnyDraftContent) {
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+
+    if (scheduleSave) {
+      _scheduleAutoSave();
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _handleTitleChanged() => _markDraftDirty();
+
+  void _handleMobileBodyChanged() {
+    if (!_isDesktopEditorActive) {
+      _markDraftDirty();
+    }
+  }
+
+  void _handleQuillChanged() {
+    if (_isDesktopEditorActive) {
+      _markDraftDirty();
+    }
+  }
 
   bool _isAllowedImageFilename(String filename) {
     final ext = filename.split('.').last.toLowerCase();
@@ -95,6 +257,46 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
 
   String _toFullImageUrl(String url) {
     return url.startsWith('http') ? url : '${api.httpClient.baseUrl}$url';
+  }
+
+  Future<String?> _ensureAuthorId() async {
+    final user = c.user.value;
+    final authorId = c.authorId.value ?? user?.authorId;
+    if (authorId != null && authorId.isNotEmpty) {
+      return authorId;
+    }
+    return c.ensureAuthorForUser(user);
+  }
+
+  String _extractResponseMessage(Response<Map<String, dynamic>> res) {
+    final body = res.body;
+    if (body != null) {
+      final resolved = CaptchaService.resolveErrorMessageFromBody(body);
+      if (resolved != null && resolved.isNotEmpty) {
+        return resolved;
+      }
+
+      final error = body['error'];
+      if (error is Map) {
+        final message = error['message']?.toString();
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+      }
+
+      final errors = body['errors'];
+      if (errors is List && errors.isNotEmpty) {
+        final first = errors.first;
+        if (first is Map) {
+          final message = first['message']?.toString();
+          if (message != null && message.isNotEmpty) {
+            return message;
+          }
+        }
+      }
+    }
+
+    return res.statusText ?? 'Unknown error';
   }
 
   /// 设置粘贴事件监听
@@ -224,7 +426,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
       );
 
       if (result != null) {
-        final id = result['id'];
+        final id = result['documentId'] ?? result['id'];
         final url = result['url'] as String?;
         if (id != null && url != null) {
           task.serverId = id.toString();
@@ -232,6 +434,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
           task.status.value = UploadStatus.done;
           task.progress.value = 100;
           _uploadTasks.refresh();
+          _markDraftDirty();
           return;
         }
       }
@@ -260,6 +463,7 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   void _removeUploadTask(int index) {
     if (index >= 0 && index < _uploadTasks.length) {
       _uploadTasks.removeAt(index);
+      _markDraftDirty();
     }
   }
 
@@ -509,8 +713,212 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     );
   }
 
+  Future<void> _saveDraft({bool force = false}) async {
+    final inFlight = _saveDraftFuture;
+    if (inFlight != null) {
+      await inFlight;
+      if (!force) {
+        return;
+      }
+    }
+
+    final next = _performSaveDraft(force: force);
+    _saveDraftFuture = next;
+    try {
+      await next;
+    } finally {
+      if (identical(_saveDraftFuture, next)) {
+        _saveDraftFuture = null;
+      }
+    }
+  }
+
+  Future<void> _performSaveDraft({bool force = false}) async {
+    if (_isInitializingDraft) {
+      return;
+    }
+
+    if (_documentId == null && !_hasAnyDraftContent) {
+      return;
+    }
+
+    final payload = _buildDraftPayload();
+    final snapshot = _draftSnapshot(payload);
+    if (!force && snapshot == _lastSavedSnapshot) {
+      return;
+    }
+
+    final authorId = await _ensureAuthorId();
+    if (authorId == null || authorId.isEmpty) {
+      throw Exception('无法关联作者，请重新登录后再试');
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSavingDraft = true;
+      });
+    }
+
+    try {
+      late final Response<Map<String, dynamic>> res;
+      if (_documentId == null) {
+        res = await api.createArticleDraft(
+          title: payload['title']?.toString() ?? '',
+          text: payload['text']?.toString() ?? '',
+          editorState: payload['editorState'] as List<dynamic>?,
+          coverId: payload['cover'],
+          authorId: authorId,
+        );
+      } else {
+        res = await api.updateArticleDraft(
+          id: _documentId!,
+          title: payload['title']?.toString() ?? '',
+          text: payload['text']?.toString() ?? '',
+          editorState: payload['editorState'] as List<dynamic>?,
+          coverId: payload['cover'],
+          authorId: authorId,
+        );
+      }
+
+      if (res.hasError) {
+        throw Exception(_extractResponseMessage(res));
+      }
+
+      final saved = api.unwrapData<Map<String, dynamic>>(res);
+      final discussion = DiscussionModel.fromJson(
+        saved,
+        isEditableDraft: true,
+      );
+
+      _documentId = discussion.id.isNotEmpty
+          ? discussion.id
+          : (saved['documentId']?.toString() ?? _documentId);
+      _syncSavedSnapshot();
+
+      if (widget.discussion != null) {
+        widget.discussion!.updateFrom(discussion);
+        widget.discussion!.id = _documentId ?? widget.discussion!.id;
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      _hasUnsavedChanges = true;
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingDraft = false;
+        });
+      }
+    }
+  }
+
+  void _applyDiscussionToEditor(DiscussionModel discussion) {
+    _suppressChangeTracking = true;
+    try {
+      titleController.text = discussion.title;
+      _mobileBodyController.text = discussion.rawBodyText;
+
+      try {
+        final editorState = discussion.editorState;
+        if (editorState != null && editorState.isNotEmpty) {
+          _quillController.document = quill.Document.fromJson(editorState);
+        } else {
+          final mdDocument = md.Document(
+            encodeHtml: false,
+            extensionSet: md.ExtensionSet.gitHubWeb,
+          );
+          final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
+          final delta = mdToDelta.convert(discussion.rawBodyText);
+          _quillController.document = quill.Document.fromDelta(delta);
+        }
+      } catch (e) {
+        debugPrint('Markdown parsing failed: $e');
+        _quillController.document = quill.Document()
+          ..insert(0, discussion.rawBodyText);
+      }
+
+      _uploadTasks.clear();
+      for (final cover in discussion.coverImages) {
+        final task = UploadTask(
+          localId: 'existing_${_uploadTasks.length}',
+          filename: '',
+          bytes: Uint8List(0),
+          mimeType: 'image/jpeg',
+        );
+        task.serverId = cover.id ?? '';
+        task.serverUrl = cover.url;
+        task.status.value = UploadStatus.done;
+        task.progress.value = 100;
+        _uploadTasks.add(task);
+      }
+
+      _documentId = discussion.id.isNotEmpty ? discussion.id : _documentId;
+      _persistedBodyText = discussion.rawBodyText;
+      _persistedEditorState = discussion.editorState == null
+          ? null
+          : List<dynamic>.from(discussion.editorState!);
+      _syncSavedSnapshot(
+          savedAt: discussion.lastEditedAt ?? discussion.createdAt);
+    } finally {
+      _suppressChangeTracking = false;
+    }
+  }
+
+  Future<void> _loadDraftIfNeeded() async {
+    final draftId = widget.documentId ?? widget.discussion?.id;
+    if (draftId == null || draftId.isEmpty) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isInitializingDraft = true;
+      });
+    }
+
+    try {
+      final discussion = await api.getMyDraftDetail(draftId);
+      _applyDiscussionToEditor(discussion);
+      if (widget.discussion != null) {
+        widget.discussion!.updateFrom(discussion);
+      }
+    } catch (e) {
+      debugPrint('Load draft failed: $e');
+      if (widget.discussion == null && mounted) {
+        showToast('加载草稿失败: $e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitializingDraft = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleClose() async {
+    _autoSaveDebounce?.cancel();
+
+    if (_hasUnsavedChanges && (_documentId != null || _hasAnyDraftContent)) {
+      try {
+        await _saveDraft(force: true);
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      Get.back();
+    }
+  }
+
   @override
   void dispose() {
+    _autoSaveDebounce?.cancel();
+    titleController.removeListener(_handleTitleChanged);
+    _mobileBodyController.removeListener(_handleMobileBodyChanged);
+    _quillController.removeListener(_handleQuillChanged);
     _pageController.dispose();
     titleController.dispose();
     _mobileBodyController.dispose();
@@ -525,6 +933,11 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
   @override
   void initState() {
     super.initState();
+    _documentId = widget.documentId ?? widget.discussion?.id;
+    titleController.addListener(_handleTitleChanged);
+    _mobileBodyController.addListener(_handleMobileBodyChanged);
+    _quillController.addListener(_handleQuillChanged);
+
     // 设置 Web 平台剪贴板粘贴监听
     if (kIsWeb) {
       _setupPasteListener();
@@ -532,295 +945,91 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     }
 
     if (widget.discussion != null) {
-      titleController.text = widget.discussion!.title;
-      _mobileBodyController.text = widget.discussion!.rawBodyText;
-      // Prefer persisted Quill Delta when available. Fall back to Markdown
-      // only for older articles created before editorState existed.
-      try {
-        final editorState = widget.discussion!.editorState;
-        if (editorState != null && editorState.isNotEmpty) {
-          _quillController.document = quill.Document.fromJson(editorState);
-        } else {
-          final mdDocument = md.Document(
-            encodeHtml: false,
-            extensionSet: md.ExtensionSet.gitHubWeb,
-          );
-          final mdToDelta = MarkdownToDelta(markdownDocument: mdDocument);
-          final delta = mdToDelta.convert(widget.discussion!.rawBodyText);
-          _quillController.document = quill.Document.fromDelta(delta);
-        }
-      } catch (e) {
-        debugPrint('Markdown parsing failed: $e');
-        _quillController.document.insert(0, widget.discussion!.rawBodyText);
-      }
-
-      // Load existing covers as already-done upload tasks
-      for (final cover in widget.discussion!.coverImages) {
-        final task = UploadTask(
-          localId: 'existing_${_uploadTasks.length}',
-          filename: '',
-          bytes: Uint8List(0),
-          mimeType: 'image/jpeg',
-        );
-        task.serverId = '';
-        task.serverUrl = cover.url;
-        task.status.value = UploadStatus.done;
-        task.progress.value = 100;
-        _uploadTasks.add(task);
-      }
+      _applyDiscussionToEditor(widget.discussion!);
     }
+    unawaited(_loadDraftIfNeeded());
   }
 
-  String _slugify(String input) {
-    final normalized = input
-        .toLowerCase()
-        .trim()
-        .replaceAll(RegExp('[^a-z0-9]+'), '-')
-        .replaceAll(RegExp('-{2,}'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    return normalized.isEmpty ? 'post' : normalized;
-  }
+  Future<void> _publish({bool isMobile = false}) async {
+    _isDesktopEditorActive = !isMobile;
 
-  String _slugifyUnique(String input) {
-    final base = _slugify(input);
-    final suffix = DateTime.now().millisecondsSinceEpoch;
-    return '$base-$suffix';
-  }
-
-  bool _isSlugUniqueError(Map<String, dynamic>? body) {
-    if (body == null) return false;
-
-    // Check for Strapi v5 REST error format
-    final error = body['error'];
-    if (error is Map) {
-      final message = error['message']?.toString().toLowerCase() ?? '';
-      if (message.contains('unique') || message.contains('slug')) return true;
-
-      final details = error['details'];
-      if (details is Map) {
-        final errors = details['errors'];
-        if (errors is List) {
-          for (final item in errors) {
-            if (item is Map) {
-              final path = item['path'];
-              final msg = item['message']?.toString().toLowerCase() ?? '';
-              if (msg.contains('unique') ||
-                  (path is List && path.contains('slug'))) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-      return false;
-    }
-
-    // Fallback for GraphQL style (if any legacy code remains)
-    final errors = body['errors'];
-    if (errors is! List || errors.isEmpty) return false;
-    final first = errors.first;
-    if (first is! Map) return false;
-    final message = first['message']?.toString().toLowerCase() ?? '';
-    if (message.contains('unique')) return true;
-    final ext = first['extensions'];
-    if (ext is Map<String, dynamic>) {
-      final error = ext['error'];
-      final details =
-          error is Map ? (error as Map<String, dynamic>)['details'] : null;
-      final errList =
-          details is Map ? (details as Map<String, dynamic>)['errors'] : null;
-      if (errList is List) {
-        for (final item in errList) {
-          if (item is Map<String, dynamic>) {
-            final path = item['path'];
-            final msg = item['message']?.toString().toLowerCase() ?? '';
-            if (msg.contains('unique') ||
-                (path is List && path.contains('slug'))) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  Future<void> _submit({bool isMobile = false}) async {
     final title = titleController.text.trim();
-    final String textValue;
-    final List<dynamic>? editorState;
-    if (isMobile) {
-      textValue = _mobileBodyController.text.trim();
-      editorState = null;
-    } else {
-      final delta = _quillController.document.toDelta();
-      textValue = _quillController.document.toPlainText().trimRight();
-      editorState = delta.toJson();
-    }
-
-    // Pass all uploaded images as cover
-    // If backend supports multiple, we send list.
-    // If backend only supports single, we send first one.
-    dynamic finalCoverId;
-    if (_uploadedImages.isNotEmpty) {
-      if (_uploadedImages.length == 1) {
-        finalCoverId = _uploadedImages.first.id;
-      } else {
-        finalCoverId = _uploadedImages.map((e) => e.id).toList();
-      }
-    }
+    final textValue = _currentBodyText.trim();
 
     if (title.isEmpty) {
       showToast('标题不能为空', isError: true);
       return;
     }
-    // Block submission while images are still uploading
     if (_isCoverUploading) {
       showToast('图片正在上传中，请稍候', isError: true);
       return;
     }
-    // Content check: either text or images must exist
     if (textValue.isEmpty && _uploadedImages.isEmpty) {
       showToast('内容不能为空', isError: true);
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isPublishing = true;
+      });
+    }
 
     try {
-      Response<Map<String, dynamic>> res;
+      await _saveDraft(force: true);
 
-      if (widget.discussion != null) {
-        // Edit Mode
-        res = await api.updateDiscussion(
-          id: widget.discussion!.id,
-          title: title,
-          text: textValue,
-          editorState: editorState,
-          coverId: finalCoverId,
+      final documentId = _documentId;
+      if (documentId == null || documentId.isEmpty) {
+        throw Exception('草稿保存成功后仍缺少 documentId');
+      }
+
+      final captchaService = Get.find<CaptchaService>();
+      CaptchaPayload? captcha = await captchaService.verifyForArticlePublish();
+
+      var res = await api.publishArticleDraft(
+        id: documentId,
+        captcha: captcha,
+      );
+
+      if (res.hasError &&
+          CaptchaService.isCaptchaRequiredResponse(
+            res.body,
+            expectedScene: CaptchaScene.articlePublish,
+          )) {
+        captcha = await captchaService.verifyForRequiredResponse(
+          fallbackScene: CaptchaScene.articlePublish,
+          body: res.body,
         );
-      } else {
-        // Create Mode
-        var slug = _slugify(title);
-        final user = c.user.value;
-        final authorId = c.authorId.value ?? await c.ensureAuthorForUser(user);
-        if (authorId == null || authorId.isEmpty) {
-          throw Exception('无法关联作者，请重新登录后再试');
-        }
-
-        final captchaService = Get.find<CaptchaService>();
-        Future<Response<Map<String, dynamic>>> submitArticle({
-          CaptchaPayload? captcha,
-        }) {
-          return api.createArticle(
-            title: title,
-            text: textValue,
-            editorState: editorState,
-            slug: slug,
-            coverId: finalCoverId,
-            authorId: authorId,
-            captcha: captcha,
-          );
-        }
-
-        res = await submitArticle();
-
-        // Check for error in REST format (error object) or GraphQL format (errors list)
-        final resBody = res.body;
-        if (resBody != null) {
-          final error = resBody['error'];
-          final errors = resBody['errors'];
-          if ((error != null || errors != null) &&
-              _isSlugUniqueError(resBody)) {
-            slug = _slugifyUnique(title);
-            res = await submitArticle();
-          }
-        }
-
-        if (res.hasError &&
-            CaptchaService.isCaptchaRequiredResponse(
-              res.body,
-              expectedScene: CaptchaScene.articleCreate,
-            )) {
-          final captcha = await captchaService.verifyForRequiredResponse(
-            fallbackScene: CaptchaScene.articleCreate,
-            body: res.body,
-          );
-          res = await submitArticle(captcha: captcha);
-
-          final retryBody = res.body;
-          if (retryBody != null) {
-            final error = retryBody['error'];
-            final errors = retryBody['errors'];
-            if ((error != null || errors != null) &&
-                _isSlugUniqueError(retryBody)) {
-              slug = _slugifyUnique(title);
-              res = await submitArticle(captcha: captcha);
-            }
-          }
-        }
+        res = await api.publishArticleDraft(
+          id: documentId,
+          captcha: captcha,
+        );
       }
 
       if (res.hasError) {
-        // Try to extract Strapi error message
-        final errorBody = res.body;
-        String? msg;
-        if (errorBody != null) {
-          final error = errorBody['error'];
-          final errors = errorBody['errors'];
-          if (error is Map) {
-            msg = CaptchaService.resolveErrorMessageFromBody(errorBody) ??
-                error['message']?.toString();
-          } else if (errors is List && errors.isNotEmpty) {
-            final first = errors.first;
-            if (first is Map) {
-              msg = first['message']?.toString();
-            }
-          }
-        }
-        throw Exception(msg ?? res.statusText ?? 'Unknown error');
+        throw Exception(_extractResponseMessage(res));
       }
 
-      // Final check for business logic errors even if status is 200
-      final successBody = res.body;
-      if (successBody != null) {
-        final errors = successBody['errors'];
-        if (errors != null && errors is List) {
-          final first = errors.isNotEmpty ? errors[0] : null;
-          final msg = first is Map ? first['message']?.toString() : null;
-          throw Exception(msg ?? 'Unknown error');
-        } else {
-          final error = successBody['error'];
-          if (error != null && error is Map) {
-            final msg = error['message']?.toString();
-            throw Exception(msg ?? 'Unknown error');
-          }
-        }
-      }
+      final publishedData = api.unwrapData<Map<String, dynamic>>(res);
+      final publishedDiscussion = DiscussionModel.fromJson(publishedData);
+      _syncSavedSnapshot();
 
       if (widget.discussion != null) {
-        widget.discussion!.title = title;
-        widget.discussion!.rawBodyText = textValue;
-        widget.discussion!.editorState =
-            editorState == null ? null : List<dynamic>.from(editorState);
-        widget.discussion!.bodyHTML = md.markdownToHtml(
-          textValue,
-          extensionSet: md.ExtensionSet.gitHubWeb,
-        );
+        widget.discussion!.updateFrom(publishedDiscussion);
+        widget.discussion!
+          ..hasPublishedVersion = true
+          ..isEditableDraft = false;
       }
 
       Get.back(result: true);
-      showToast(widget.discussion != null ? '修改成功' : '发帖成功');
-      // Refresh list
+      showToast('发布成功');
       c.refreshSearchData();
     } catch (e) {
-      showToast('发帖失败: $e', isError: true);
+      showToast('发布失败: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() {
-          isLoading = false;
+          _isPublishing = false;
         });
       }
     }
@@ -838,17 +1047,15 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
     );
   }
 
-  bool get _isMobileSubmitEnabled {
-    final title = titleController.text.trim();
-    final body = _mobileBodyController.text.trim();
-    return title.isNotEmpty && body.isNotEmpty;
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
     final isWindowed = screenW >= 800;
     final isDesktop = screenW >= 600;
+    final editorStatusLabel = _editorStatusLabel;
+
+    // Keep autosave/publish reading from the editor that is actually visible.
+    _isDesktopEditorActive = isDesktop;
 
     final double baseFactor = isWindowed ? 0.7 : 1.0;
     final double zoomScale = isWindowed ? 1.1 : 1.0;
@@ -912,10 +1119,10 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
               ]),
               builder: (context, _) => Obx(
                 () => CreateDiscussionMobileNav(
-                  isLoading: isLoading,
-                  submitEnabled: _isMobileSubmitEnabled,
+                  isPublishing: _isPublishing,
+                  submitEnabled: _canPublish,
                   onPickImage: _pickImages,
-                  onSubmit: () => _submit(isMobile: true),
+                  onSubmit: () => _publish(isMobile: true),
                   imageCount: _uploadTasks.length,
                   uploadingCount: _uploadTasks
                       .where((t) =>
@@ -933,8 +1140,23 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
             CreateDiscussionHeader(
               controller: c,
               title: '发布委托',
-              onClose: () => Get.back(),
+              onClose: _handleClose,
             ),
+            if (editorStatusLabel != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    editorStatusLabel,
+                    style: TextStyle(
+                      color: _editorStatusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
             // Body
             Expanded(
               child: isDesktop
@@ -968,8 +1190,9 @@ class _CreateDiscussionPageState extends State<CreateDiscussionPage> {
                                 ),
                               ),
                               CreateDiscussionDesktopFooter(
-                                isLoading: isLoading,
-                                onSubmit: _submit,
+                                isPublishing: _isPublishing,
+                                onSubmit: () => _publish(),
+                                submitEnabled: _canPublish,
                                 showCompressionToggle: _selectedIndex == 1,
                                 compressBeforeUpload: _compressBeforeUpload,
                                 onCompressionChanged: (value) {

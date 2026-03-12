@@ -1,5 +1,6 @@
 enum CaptchaScene {
   articleCreate('articleCreate'),
+  articlePublish('articlePublish'),
   commentCreate('commentCreate'),
   checkIn('checkIn'),
   login('login'),

@@ -11,6 +11,7 @@ import 'package:inter_knot/helpers/throttle.dart';
 import 'package:inter_knot/helpers/toast.dart';
 import 'package:inter_knot/models/captcha.dart';
 import 'package:inter_knot/models/h_data.dart';
+import 'package:inter_knot/pages/create_discussion_page.dart';
 import 'package:inter_knot/services/captcha_service.dart';
 import 'package:intl/intl.dart';
 
@@ -640,6 +641,16 @@ class _MyDiscussionsTabState extends State<_MyDiscussionsTab> {
         list: discussions(),
         hasNextPage: hasNextPage(),
         fetchData: fetchData,
+        onOpenItem: (context, item, discussion) async {
+          final result = await CreateDiscussionPage.show(
+            context,
+            documentId: item.id,
+            discussion: discussion,
+          );
+          if (result == true && mounted) {
+            await _refresh();
+          }
+        },
       );
     });
   }

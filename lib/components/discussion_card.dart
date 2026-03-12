@@ -241,6 +241,14 @@ class _DiscussionCardState extends State<DiscussionCard>
                     ],
                   ),
                 ),
+                if (widget.hData.isEditableDraft)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: _DraftBadge(
+                      label: widget.hData.hasPublishedVersion ? '待发布更新' : '草稿',
+                    ),
+                  ),
               ],
             ),
             SizedBox(
@@ -340,6 +348,35 @@ class _DiscussionCardState extends State<DiscussionCard>
 
   @override
   bool get wantKeepAlive => true;
+}
+
+class _DraftBadge extends StatelessWidget {
+  const _DraftBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.66),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: const Color(0xffD7FF00).withValues(alpha: 0.42),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xffD7FF00),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
 }
 
 class Cover extends StatefulWidget {

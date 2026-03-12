@@ -126,7 +126,8 @@ class DiscussionActionButtonsState extends State<DiscussionActionButtons>
             res.body,
             expectedScene: CaptchaScene.commentCreate,
           )) {
-        final captcha = await Get.find<CaptchaService>().verifyForRequiredResponse(
+        final captcha =
+            await Get.find<CaptchaService>().verifyForRequiredResponse(
           fallbackScene: CaptchaScene.commentCreate,
           body: res.body,
         );
@@ -162,16 +163,16 @@ class DiscussionActionButtonsState extends State<DiscussionActionButtons>
       // 清空评论列表并重置分页状态
       widget.discussion.comments.clear();
       widget.discussion.commentsCount++;
-      
+
       // 强制刷新评论列表
       await widget.discussion.fetchComments();
-      
+
       // 强制刷新UI
       if (mounted) setState(() {});
-      
+
       // 通知父组件刷新UI
       widget.onCommentAdded?.call();
-      
+
       showToast('评论发布成功');
     } catch (e) {
       showToast('评论发布失败: $e', isError: true);
@@ -286,6 +287,7 @@ class DiscussionActionButtonsState extends State<DiscussionActionButtons>
   void _handleEdit() async {
     final result = await CreateDiscussionPage.show(
       context,
+      documentId: widget.discussion.id,
       discussion: widget.discussion,
     );
     if (result == true) {
@@ -354,8 +356,7 @@ class DiscussionActionButtonsState extends State<DiscussionActionButtons>
                                               fontSize: 16,
                                               color: Colors.white),
                                           cursorColor: Colors.white,
-                                          decoration:
-                                              InputDecoration.collapsed(
+                                          decoration: InputDecoration.collapsed(
                                             hintText: _replyToUser != null
                                                 ? '回复 @$_replyToUser：'
                                                 : '请输入文本...',

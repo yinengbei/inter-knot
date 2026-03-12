@@ -57,6 +57,7 @@ class DiscussionGrid extends StatefulWidget {
     this.fetchData,
     this.controller,
     this.reorderHistoryOnOpen = true,
+    this.onOpenItem,
   });
 
   final Set<HDataModel> list;
@@ -64,6 +65,11 @@ class DiscussionGrid extends StatefulWidget {
   final void Function()? fetchData;
   final ScrollController? controller;
   final bool reorderHistoryOnOpen;
+  final Future<void> Function(
+    BuildContext context,
+    HDataModel item,
+    DiscussionModel discussion,
+  )? onOpenItem;
 
   @override
   State<DiscussionGrid> createState() => _DiscussionGridState();
@@ -115,6 +121,10 @@ class _DiscussionGridState extends State<DiscussionGrid>
       discussion: discussion,
       hData: item,
       onTap: () async {
+        if (widget.onOpenItem != null) {
+          await widget.onOpenItem!(context, item, discussion);
+          return;
+        }
         final result = await showZZZDialog(
           context: context,
           pageBuilder: (context) {

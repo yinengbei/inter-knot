@@ -376,6 +376,13 @@ DiscussionModel _parseDiscussionSync(Map<String, dynamic> data) {
   return parseDiscussionData(data);
 }
 
+DiscussionModel _parseEditableDraftDiscussionSync(Map<String, dynamic> data) {
+  return parseDiscussionData(
+    data,
+    isEditableDraft: true,
+  );
+}
+
 ({List<HDataModel> nodes, List<DiscussionModel> discussions})
     _parseHDataListAndDiscussionsSync(List<dynamic> data) {
   final nodes = <HDataModel>[];
@@ -395,6 +402,35 @@ DiscussionModel _parseDiscussionSync(Map<String, dynamic> data) {
       // ignore
     }
   }
+  return (nodes: nodes, discussions: discussions);
+}
+
+({List<HDataModel> nodes, List<DiscussionModel> discussions})
+    _parseEditableDraftListAndDiscussionsSync(List<dynamic> data) {
+  final nodes = <HDataModel>[];
+  final discussions = <DiscussionModel>[];
+
+  for (final e in data) {
+    if (e is! Map<String, dynamic>) continue;
+    try {
+      final hData = HDataModel.fromMap(
+        e,
+        isEditableDraft: true,
+      );
+      nodes.add(hData);
+
+      if (e['title'] != null) {
+        final discussion = DiscussionModel.fromJson(
+          e,
+          isEditableDraft: true,
+        );
+        discussions.add(discussion);
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   return (nodes: nodes, discussions: discussions);
 }
 
@@ -508,16 +544,7 @@ class Api extends BaseConnect {
   Future<DiscussionModel> getDiscussion(String id) async {
     final userId = box.read<String>('userId');
 
-    final articleFuture = get(
-      '/api/articles/$id',
-      query: {
-        'populate[author][populate]': 'avatar',
-        'populate[cover][fields][0]': 'url',
-        'populate[cover][fields][1]': 'width',
-        'populate[cover][fields][2]': 'height',
-        'populate[blocks][populate]': '*',
-      },
-    );
+    final articleFuture = get('/api/articles/detail/$id');
 
     Future<Response>? readStatusFuture;
     if (userId != null && userId.isNotEmpty) {
@@ -571,6 +598,31 @@ class Api extends BaseConnect {
     final discussion = await compute(_parseDiscussionSync, data);
     final controller = Get.find<Controller>();
     controller.applyLocalOverrides(discussion);
+    HDataModel.upsertCachedDiscussion(discussion);
+    return discussion;
+  }
+
+  Future<DiscussionModel> getMyDraftDetail(String documentId) async {
+    final res = await get('/api/articles/my/$documentId');
+    final data = unwrapData<Map<String, dynamic>>(res);
+
+    final discussion = await compute(_parseEditableDraftDiscussionSync, data);
+    final controller = Get.find<Controller>();
+    controller.applyLocalOverrides(discussion);
+
+    final user = controller.user.value;
+    if (discussion.author.authorId == null ||
+        discussion.author.authorId!.isEmpty ||
+        discussion.author.name == 'Unknown') {
+      discussion.author
+        ..name = user?.name ?? user?.login ?? discussion.author.name
+        ..login = user?.login ?? discussion.author.login
+        ..avatar = user?.avatar ?? discussion.author.avatar
+        ..authorId = controller.authorId.value ??
+            user?.authorId ??
+            discussion.author.authorId;
+    }
+
     HDataModel.upsertCachedDiscussion(discussion);
     return discussion;
   }
@@ -714,13 +766,25 @@ class Api extends BaseConnect {
       );
 
       final data = unwrapData<List<dynamic>>(res);
-      await _mergeReadStatus(data, tag: 'UserDiscussions');
       final hasNext = data.length >= ApiConfig.defaultPageSize;
-      final result = await compute(_parseHDataListAndDiscussionsSync, data);
+      final result =
+          await compute(_parseEditableDraftListAndDiscussionsSync, data);
 
       final controller = Get.find<Controller>();
       for (final discussion in result.discussions) {
         controller.applyLocalOverrides(discussion);
+        final user = controller.user.value;
+        if (discussion.author.authorId == null ||
+            discussion.author.authorId!.isEmpty ||
+            discussion.author.name == 'Unknown') {
+          discussion.author
+            ..name = user?.name ?? user?.login ?? discussion.author.name
+            ..login = user?.login ?? discussion.author.login
+            ..avatar = user?.avatar ?? discussion.author.avatar
+            ..authorId = controller.authorId.value ??
+                user?.authorId ??
+                discussion.author.authorId;
+        }
         HDataModel.upsertCachedDiscussion(discussion);
       }
 
@@ -993,30 +1057,41 @@ class Api extends BaseConnect {
     return !res.hasError;
   }
 
-  Future<Response<Map<String, dynamic>>> createArticle({
-    required String title,
-    required String text,
-    required String slug,
+  dynamic _normalizeArticleCover(dynamic coverId) {
+    if (coverId == null) return null;
+
+    if (coverId is String) {
+      if (coverId.isEmpty) return null;
+      return _coerceId(coverId);
+    }
+
+    if (coverId is List) {
+      final normalized = coverId
+          .map((e) => e is String ? _coerceId(e) : e)
+          .where((e) => e != null && e.toString().isNotEmpty)
+          .toList();
+      return normalized;
+    }
+
+    return coverId;
+  }
+
+  Future<Response<Map<String, dynamic>>> createArticleDraft({
+    String title = '',
+    String text = '',
     List<dynamic>? editorState,
-    dynamic coverId, // String or List<String>
+    dynamic coverId,
     String? authorId,
-    CaptchaPayload? captcha,
   }) {
     final Map<String, dynamic> data = {
       'title': title,
       'text': text,
       'editorState': editorState,
-      'slug': slug,
-      'publishedAt': DateTime.now().toIso8601String(),
     };
 
-    if (coverId != null) {
-      if (coverId is String && coverId.isNotEmpty) {
-        data['cover'] = _coerceId(coverId);
-      } else if (coverId is List && coverId.isNotEmpty) {
-        data['cover'] =
-            coverId.map((e) => e is String ? _coerceId(e) : e).toList();
-      }
+    final normalizedCover = _normalizeArticleCover(coverId);
+    if (normalizedCover != null) {
+      data['cover'] = normalizedCover;
     }
 
     if (authorId != null && authorId.isNotEmpty) {
@@ -1025,39 +1100,59 @@ class Api extends BaseConnect {
 
     return post(
       '/api/articles',
-      _withCaptcha({'data': data}, captcha),
+      {'data': data},
+      query: {'status': 'draft'},
     );
   }
 
-  Future<Response<Map<String, dynamic>>> updateDiscussion({
+  Future<Response<Map<String, dynamic>>> updateArticleDraft({
     required String id,
     String? title,
     String? text,
     List<dynamic>? editorState,
-    String? slug,
     dynamic coverId,
+    String? authorId,
   }) {
     final Map<String, dynamic> data = {};
     if (title != null) data['title'] = title;
     if (text != null) data['text'] = text;
     data['editorState'] = editorState;
-    if (slug != null) data['slug'] = slug;
-
-    if (coverId != null) {
-      if (coverId is String && coverId.isNotEmpty) {
-        data['cover'] = _coerceId(coverId);
-      } else if (coverId is List && coverId.isNotEmpty) {
-        data['cover'] =
-            coverId.map((e) => e is String ? _coerceId(e) : e).toList();
-      } else if (coverId is List && coverId.isEmpty) {
-        // Clear cover if empty list passed
-        data['cover'] = [];
-      }
+    final normalizedCover = _normalizeArticleCover(coverId);
+    if (coverId is List && coverId.isEmpty) {
+      data['cover'] = [];
+    } else if (normalizedCover != null) {
+      data['cover'] = normalizedCover;
+    }
+    if (authorId != null && authorId.isNotEmpty) {
+      data['author'] = _coerceId(authorId);
     }
 
     return put(
       '/api/articles/$id',
       {'data': data},
+      query: {'status': 'draft'},
+    );
+  }
+
+  Future<Response<Map<String, dynamic>>> publishArticleDraft({
+    required String id,
+    CaptchaPayload? captcha,
+  }) {
+    return post(
+      '/api/articles/$id/publish',
+      _withCaptcha(<String, dynamic>{}, captcha),
+    );
+  }
+
+  Future<Response<Map<String, dynamic>>> unpublishArticleDraft(
+    String id, {
+    bool discardDraft = false,
+  }) {
+    return post(
+      '/api/articles/$id/unpublish',
+      {
+        'discardDraft': discardDraft,
+      },
     );
   }
 

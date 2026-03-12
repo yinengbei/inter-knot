@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class CreateDiscussionMobileNav extends StatelessWidget {
   const CreateDiscussionMobileNav({
     super.key,
-    required this.isLoading,
+    required this.isPublishing,
     required this.submitEnabled,
     required this.onPickImage,
     required this.onSubmit,
@@ -11,7 +11,7 @@ class CreateDiscussionMobileNav extends StatelessWidget {
     this.uploadingCount = 0,
   });
 
-  final bool isLoading;
+  final bool isPublishing;
   final bool submitEnabled;
   final VoidCallback onPickImage;
   final VoidCallback onSubmit;
@@ -44,7 +44,7 @@ class CreateDiscussionMobileNav extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
-              child: isLoading
+              child: isPublishing
                   ? const Center(
                       child: SizedBox(
                         width: 20,

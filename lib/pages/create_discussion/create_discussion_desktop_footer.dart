@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 class CreateDiscussionDesktopFooter extends StatelessWidget {
   const CreateDiscussionDesktopFooter({
     super.key,
-    required this.isLoading,
+    required this.isPublishing,
     required this.onSubmit,
+    this.submitEnabled = true,
     this.showCompressionToggle = false,
     this.compressBeforeUpload = true,
     this.onCompressionChanged,
   });
 
-  final bool isLoading;
+  final bool isPublishing;
   final VoidCallback onSubmit;
+  final bool submitEnabled;
   final bool showCompressionToggle;
   final bool compressBeforeUpload;
   final ValueChanged<bool>? onCompressionChanged;
@@ -47,9 +49,10 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
                       _CompressionOption(
                         label: '图片压缩',
                         selected: compressBeforeUpload,
-                        onTap: isLoading
+                        onTap: isPublishing
                             ? null
-                            : () => onCompressionChanged?.call(!compressBeforeUpload),
+                            : () => onCompressionChanged
+                                ?.call(!compressBeforeUpload),
                       ),
                     ],
                   ),
@@ -59,11 +62,13 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
           else
             const SizedBox.shrink(),
           Material(
-            color: const Color(0xff1A1A1A),
+            color: submitEnabled
+                ? const Color(0xff1A1A1A)
+                : const Color(0xff111111),
             borderRadius: BorderRadius.circular(28),
             child: InkWell(
               borderRadius: BorderRadius.circular(28),
-              onTap: isLoading ? null : onSubmit,
+              onTap: isPublishing || !submitEnabled ? null : onSubmit,
               child: Container(
                 height: 56,
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -76,7 +81,7 @@ class CreateDiscussionDesktopFooter extends StatelessWidget {
                         color: Color(0xffFBC02D),
                         shape: BoxShape.circle,
                       ),
-                      child: isLoading
+                      child: isPublishing
                           ? const SizedBox(
                               width: 16,
                               height: 16,

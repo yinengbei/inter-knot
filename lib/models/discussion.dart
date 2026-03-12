@@ -12,18 +12,23 @@ import 'package:inter_knot/models/pagination.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class CoverImage {
+  final String? id;
   final String url;
   final int? width;
   final int? height;
 
   CoverImage({
+    this.id,
     required this.url,
     this.width,
     this.height,
   });
 }
 
-DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
+DiscussionModel parseDiscussionData(
+  Map<String, dynamic> json, {
+  bool isEditableDraft = false,
+}) {
   final textVal = json['text'];
   String rawBody = textVal is String ? textVal : '';
 
@@ -54,7 +59,12 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
   final (:cover, :html) = parseHtml(htmlBody);
   final List<CoverImage> parsedCovers = [];
 
-  CoverImage? normalizeCover(String? url, int? width, int? height) {
+  CoverImage? normalizeCover(
+    String? url,
+    int? width,
+    int? height, {
+    String? id,
+  }) {
     if (url == null || url.isEmpty) return null;
     String finalUrl = url;
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -64,23 +74,43 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
     } else {
       finalUrl = '${ApiConfig.baseUrl}/$url';
     }
-    return CoverImage(url: finalUrl, width: width, height: height);
+    return CoverImage(
+      id: id,
+      url: finalUrl,
+      width: width,
+      height: height,
+    );
+  }
+
+  int? parseDimension(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 
   final coverData = json['cover'];
   if (coverData is List) {
     for (final item in coverData) {
       if (item is Map<String, dynamic> && item['url'] != null) {
-        final width = item['width'] as int?;
-        final height = item['height'] as int?;
-        final cover = normalizeCover(item['url'] as String?, width, height);
+        final width = parseDimension(item['width']);
+        final height = parseDimension(item['height']);
+        final cover = normalizeCover(
+          item['url'] as String?,
+          width,
+          height,
+          id: item['documentId']?.toString() ?? item['id']?.toString(),
+        );
         if (cover != null) parsedCovers.add(cover);
       }
     }
   } else if (coverData is Map<String, dynamic> && coverData['url'] != null) {
-    final width = coverData['width'] as int?;
-    final height = coverData['height'] as int?;
-    final cover = normalizeCover(coverData['url'] as String?, width, height);
+    final width = parseDimension(coverData['width']);
+    final height = parseDimension(coverData['height']);
+    final cover = normalizeCover(
+      coverData['url'] as String?,
+      width,
+      height,
+      id: coverData['documentId']?.toString() ?? coverData['id']?.toString(),
+    );
     if (cover != null) parsedCovers.add(cover);
   }
 
@@ -101,6 +131,7 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
   }
 
   final commentsJson = json['comments'] as Map<String, dynamic>?;
+  final hasPublishedVersion = json['hasPublishedVersion'] == true;
 
   final authorData = json['author'];
   final author = authorData is Map<String, dynamic>
@@ -159,6 +190,8 @@ DiscussionModel parseDiscussionData(Map<String, dynamic> json) {
     liked: json['liked'] == true,
     isRead: json['isRead'] == true,
     isPinned: json['isPinned'] == true,
+    isEditableDraft: isEditableDraft,
+    hasPublishedVersion: hasPublishedVersion,
     comments: commentsJson != null
         ? [
             PaginationModel.fromJson(
@@ -194,6 +227,8 @@ class DiscussionModel {
   int commentsCount;
   int likesCount;
   bool liked;
+  bool isEditableDraft;
+  bool hasPublishedVersion;
   AuthorModel author;
   List<PaginationModel<CommentModel>> comments;
 
@@ -224,6 +259,8 @@ class DiscussionModel {
     author = other.author;
     likesCount = other.likesCount;
     liked = other.liked;
+    isEditableDraft = other.isEditableDraft;
+    hasPublishedVersion = other.hasPublishedVersion;
     // updated fields from detail api
   }
 
@@ -271,6 +308,8 @@ class DiscussionModel {
     required this.commentsCount,
     this.likesCount = 0,
     this.liked = false,
+    this.isEditableDraft = false,
+    this.hasPublishedVersion = false,
     required this.lastEditedAt,
     required this.author,
     this.isRead = false,
@@ -280,8 +319,14 @@ class DiscussionModel {
     required this.databaseId,
   });
 
-  factory DiscussionModel.fromJson(Map<String, dynamic> json) =>
-      parseDiscussionData(json);
+  factory DiscussionModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isEditableDraft = false,
+  }) =>
+      parseDiscussionData(
+        json,
+        isEditableDraft: isEditableDraft,
+      );
 
   @override
   bool operator ==(Object other) => other is DiscussionModel && other.id == id;
@@ -301,7 +346,12 @@ class DiscussionModel {
       'editorState': editorState,
       'text': rawBodyText, // Compatible with parseDiscussionData
       'cover': coverImages
-          .map((e) => {'url': e.url, 'width': e.width, 'height': e.height})
+          .map((e) => {
+                if (e.id != null) 'documentId': e.id,
+                'url': e.url,
+                'width': e.width,
+                'height': e.height,
+              })
           .toList(),
       'documentId': id,
       'createdAt': createdAt.toIso8601String(),
@@ -309,6 +359,8 @@ class DiscussionModel {
       'commentsCount': commentsCount,
       'likescount': likesCount,
       'liked': liked,
+      'hasPublishedVersion': hasPublishedVersion,
+      'isEditableDraft': isEditableDraft,
       'author': author.toJson(),
     };
   }

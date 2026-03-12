@@ -45,6 +45,8 @@ class HDataModel {
   DateTime updatedAt;
   DateTime createdAt;
   bool isPinned;
+  bool isEditableDraft;
+  bool hasPublishedVersion;
   bool get isPin => isPinned;
   String get url => '';
 
@@ -58,6 +60,8 @@ class HDataModel {
     required DateTime? updatedAt,
     required DateTime? createdAt,
     required this.isPinned,
+    this.isEditableDraft = false,
+    this.hasPublishedVersion = false,
   })  : updatedAt = updatedAt ?? _zeroDate,
         createdAt = createdAt ?? _zeroDate;
 
@@ -86,7 +90,9 @@ class HDataModel {
       _valueCache.remove(keyToRemove);
     }
 
-    final future = api.getDiscussion(id).then((value) {
+    final future =
+        (isEditableDraft ? api.getMyDraftDetail(id) : api.getDiscussion(id))
+            .then((value) {
       _valueCache[id] = value;
       return value;
     });
@@ -94,7 +100,10 @@ class HDataModel {
     return discussionsCache[id] = future;
   }
 
-  factory HDataModel.fromMap(Map<String, dynamic> json) {
+  factory HDataModel.fromMap(
+    Map<String, dynamic> json, {
+    bool isEditableDraft = false,
+  }) {
     // 优先取 documentId，其次是 id (转 String)，最后 fallback 到 number (转 String)
     final docId = json['documentId'] as String? ??
         json['id']?.toString() ??
@@ -112,18 +121,29 @@ class HDataModel {
       updatedAt: updatedAt,
       createdAt: createdAt,
       isPinned: false,
+      isEditableDraft: isEditableDraft,
+      hasPublishedVersion: json['hasPublishedVersion'] == true,
     );
   }
 
-  factory HDataModel.fromJson(Map<String, dynamic> json) {
-    final hData = HDataModel.fromMap(json);
+  factory HDataModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isEditableDraft = false,
+  }) {
+    final hData = HDataModel.fromMap(
+      json,
+      isEditableDraft: isEditableDraft,
+    );
     final docId = hData.id;
 
     // Optimization: If json contains title, it might be a full object.
     // Try to parse it and seed the cache to avoid N+1 requests.
     if (json['title'] != null) {
       try {
-        final discussion = DiscussionModel.fromJson(json);
+        final discussion = DiscussionModel.fromJson(
+          json,
+          isEditableDraft: isEditableDraft,
+        );
         discussionsCache[docId] = Future.value(discussion);
         _valueCache[docId] = discussion;
       } catch (e) {
@@ -151,6 +171,7 @@ class HDataModel {
       updatedAt: updatedAt,
       createdAt: createdAt,
       isPinned: true,
+      hasPublishedVersion: json['hasPublishedVersion'] == true,
     );
   }
 
@@ -172,6 +193,8 @@ class HDataModel {
       'updatedAt': updatedAt.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'isPinned': isPinned,
+      'isEditableDraft': isEditableDraft,
+      'hasPublishedVersion': hasPublishedVersion,
       // We might want to cache title/cover for offline display if available in valueCache
       if (_valueCache.containsKey(id)) ..._valueCache[id]!.toJson(),
     };

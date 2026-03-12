@@ -50,6 +50,20 @@ class CaptchaService extends GetxService {
     return runCaptchaVerification(currentConfig.captchaId);
   }
 
+  Future<CaptchaPayload?> verifyForArticlePublish() async {
+    final currentConfig = await ensureConfigLoaded();
+    final shouldVerify =
+        currentConfig.isSceneEnabled(CaptchaScene.articlePublish) ||
+            currentConfig.isSceneEnabled(CaptchaScene.articleCreate);
+    if (!shouldVerify) {
+      return null;
+    }
+    if (currentConfig.captchaId.isEmpty) {
+      throw ApiException('验证码配置缺失');
+    }
+    return runCaptchaVerification(currentConfig.captchaId);
+  }
+
   Future<CaptchaPayload> verifyForRequiredResponse({
     required CaptchaScene fallbackScene,
     dynamic body,
